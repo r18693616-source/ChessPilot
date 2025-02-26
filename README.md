@@ -14,6 +14,7 @@
 - **Graphical User Interface (GUI)**: Provides a user-friendly interface instead of terminal-based interaction.
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.
 - **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
+- **New Feature – Depth Slider**: Users can now choose the depth for Stockfish's analysis via a slider. **Note**: More depth means longer processing time. The default depth is set to 15, which is recommended for a good balance between speed and accuracy.
 
 ---
 
@@ -21,8 +22,8 @@
 
 Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/ChessPilot/releases).
 
-- **Linux:** [ChessPilot-linux-v1.1.0](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v1.1.0/ChessPilot-linux-v1.1.0)
-- **Windows:** [ChessPilot-win-v1.1.0.exe](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v1.1.0/ChessPilot-win-v1.1.0.exe)
+- **Linux:** [ChessPilot-linux-v2.0.0](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v2.0.0/ChessPilot-linux-v2.0.0)
+- **Windows:** [ChessPilot-win-v2.0.0.exe](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v2.0.0/ChessPilot-win-v2.0.0.exe)
 
 ---
 
@@ -100,7 +101,10 @@ Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) 
 3. **Indicate Castling Rights:**
    - Before each move, tick the checkbox for **Kingside Castle** or **Queenside Castle**, if applicable.
 
-4. **Tips for Best Performance:**
+4. **Choose Depth for Move:**
+   - Use the slider to select the desired depth for Stockfish's analysis. **Note**: The higher the depth, the more time it will take for Stockfish to compute the best move. The default depth is set to **15**, which is suggested for optimal performance.
+
+5. **Tips for Best Performance:**
    - Use 100% zoom for better accuracy in chessboard detection.
    - After selecting "Play next move," the script will:
      - Extract the FEN from the image.

@@ -7,7 +7,7 @@ import mss.tools
 import sys
 import os
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import threading
 import shutil
@@ -16,7 +16,7 @@ from boardreader import get_positions
 
 
 def get_stockfish_path():
-    # If the app is bundled (e.g., with PyInstaller)
+    
     if getattr(sys, 'frozen', False):
         path = os.path.join(sys._MEIPASS, "stockfish.exe" if os.name == "nt" else "stockfish")
     else:
@@ -38,10 +38,8 @@ def get_stockfish_path():
 
 stockfish_path = get_stockfish_path()
 
-
 def resource_path(relative_path):
     try:
-        # PyInstaller stores data files in sys._MEIPASS
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
@@ -52,143 +50,144 @@ class ChessAssistant:
     def __init__(self, root):
         self.root = root
         self.root.title("Chess Assistant")
-        # Increase window size to accommodate castling options nicely
         self.root.geometry("350x300")
         self.root.resizable(False, False)
-        self.root.attributes('-topmost', True)  # Prevent minimization
+        self.root.attributes('-topmost', True)
         self.color_indicator = None
         self.last_automated_click_time = 0
+        self.depth_var = tk.IntVar(value=15)
 
-        # Configure dark theme colors
-        self.bg_color = "#2e2e2e"
-        self.btn_color = "#3e3e3e"
-        self.text_color = "#ffffff"
+        # Modern color scheme
+        self.bg_color = "#2D2D2D"
+        self.frame_color = "#373737"
         self.accent_color = "#4CAF50"
-
-        self.root.configure(bg=self.bg_color)
+        self.text_color = "#FFFFFF"
+        self.hover_color = "#45a049"
         
-        # Set the window icon
+        # Configure styles
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
+        self.style.configure("TScale", troughcolor=self.frame_color, background=self.bg_color)
+        self.style.configure("TCheckbutton", background=self.bg_color, foreground=self.text_color)
+        
         self.set_window_icon()
-        
-        # Create GUI elements
-        self.create_color_selection()
-        self.create_main_interface()
-        self.show_color_selection()
-
-        # Bind Esc key to handle_esc_key method
+        self.create_widgets()
         self.root.bind('<Escape>', self.handle_esc_key)
-    
+
     def set_window_icon(self):
-        """Sets the window icon to 'chess-logo.png' if found, otherwise uses the default Tk icon."""
         logo_path = resource_path(os.path.join('assets', 'chess-logo.png'))
         if os.path.exists(logo_path):
             try:
                 img = Image.open(logo_path)
                 self.icon = ImageTk.PhotoImage(img)
                 self.root.iconphoto(False, self.icon)
-            except Exception as e:
-                print(f"Could not set icon from {logo_path}: {e}")
-    
+            except Exception:
+                pass
+
     def handle_esc_key(self, event=None):
-        """Switch back to color selection when Esc is pressed."""
         if self.main_frame.winfo_ismapped():
             self.main_frame.pack_forget()
-            self.color_frame.pack(expand=True, fill=tk.BOTH, pady=20)
+            self.color_frame.pack(expand=True, fill=tk.BOTH)
             self.color_indicator = None
             self.btn_play.config(state=tk.DISABLED)
             self.update_status("")
 
-    def create_color_selection(self):
+    def create_widgets(self):
+        # Color selection frame
         self.color_frame = tk.Frame(self.root, bg=self.bg_color)
-        self.lbl_color = tk.Label(self.color_frame, 
-                                  text="Select Your Color:",
-                                  bg=self.bg_color,
-                                  fg=self.text_color,
-                                  font=('Arial', 12))
-        self.btn_white = tk.Button(self.color_frame,
-                                   text="White",
-                                   command=lambda: self.set_color("w"),
-                                   bg=self.accent_color,
-                                   fg=self.text_color,
-                                   width=10)
-        self.btn_black = tk.Button(self.color_frame,
-                                   text="Black",
-                                   command=lambda: self.set_color("b"),
-                                   bg=self.accent_color,
-                                   fg=self.text_color,
-                                   width=10)
+        
+        header = tk.Label(self.color_frame, text="Chess Assistant", font=('Segoe UI', 16, 'bold'),
+                        bg=self.bg_color, fg=self.accent_color)
+        header.pack(pady=(20, 10))
 
-    def create_main_interface(self):
+        color_panel = tk.Frame(self.color_frame, bg=self.frame_color, padx=20, pady=15)
+        tk.Label(color_panel, text="Select Your Color:", font=('Segoe UI', 11),
+                bg=self.frame_color, fg=self.text_color).pack(pady=5)
+        
+        btn_frame = tk.Frame(color_panel, bg=self.frame_color)
+        self.btn_white = self.create_color_button(btn_frame, "White", "w")
+        self.btn_black = self.create_color_button(btn_frame, "Black", "b")
+        btn_frame.pack(pady=5)
+
+        depth_panel = tk.Frame(color_panel, bg=self.frame_color)
+        tk.Label(depth_panel, text="Stockfish Depth:", font=('Segoe UI', 10),
+                bg=self.frame_color, fg=self.text_color).pack(anchor='w')
+        
+        # Set the slider's command to update the label dynamically
+        self.depth_slider = ttk.Scale(depth_panel, from_=15, to=30, variable=self.depth_var,
+                                    style="TScale", command=self.update_depth_label)
+        self.depth_slider.pack(fill='x', pady=5)
+        
+        # Initialize depth label with the current value
+        self.depth_label = tk.Label(depth_panel, text=f"Depth: {self.depth_var.get()}",
+                                    font=('Segoe UI', 9), bg=self.frame_color, fg=self.text_color)
+        self.depth_label.pack()
+        depth_panel.pack(fill='x', pady=10)
+        
+        color_panel.pack(padx=30, pady=10, fill='x')
+        self.color_frame.pack(expand=True, fill=tk.BOTH)
+
+        # Main interface frame
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
-        self.btn_play = tk.Button(self.main_frame,
-                                  text="Play Next Move",
-                                  command=self.process_move_thread,
-                                  bg=self.accent_color,
-                                  fg=self.text_color,
-                                  state=tk.DISABLED)
-        self.status_label = tk.Label(self.main_frame,
-                                     text="",
-                                     bg=self.bg_color,
-                                     fg=self.text_color,
-                                     wraplength=300,
-                                     anchor="center",
-                                     justify="center")
         
-        self.btn_play.pack(pady=10)
-        # Create castling options UI (both independent)
-        self.create_castling_options()        
-        self.status_label.pack(pady=10, fill=tk.BOTH, expand=True)
-        self.main_frame.grid_propagate(False)
-
-    def create_castling_options(self):
-        """Creates two independent checkboxes for castling options with improved layout."""
-        self.castling_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
+        self.btn_play = self.create_action_button(control_panel, "Play Next Move", self.process_move_thread)
+        self.btn_play.pack(fill='x', pady=5)
         
-        # BooleanVars default to False (unticked)
-        self.kingside_var = tk.BooleanVar(value=False)
-        self.queenside_var = tk.BooleanVar(value=False)
-        
-        # Create checkbuttons with a fixed width so text fits nicely.
-        self.kingside_cb = tk.Checkbutton(self.castling_frame,
-                                          text="Kingside Castle",
-                                          variable=self.kingside_var,
-                                          bg=self.bg_color,
-                                          fg=self.text_color,
-                                          selectcolor=self.accent_color,
-                                          activebackground=self.bg_color,
-                                          activeforeground=self.text_color,
-                                          font=('Arial', 10),
-                                          width=16)
-        self.queenside_cb = tk.Checkbutton(self.castling_frame,
-                                           text="Queenside Castle",
-                                           variable=self.queenside_var,
-                                           bg=self.bg_color,
-                                           fg=self.text_color,
-                                           selectcolor=self.accent_color,
-                                           activebackground=self.bg_color,
-                                           activeforeground=self.text_color,
-                                           font=('Arial', 10),
-                                           width=16)
-        # Arrange the checkbuttons using grid.
-        self.kingside_cb.grid(row=0, column=0, padx=10, pady=5, sticky="w")
-        self.queenside_cb.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.castling_frame = tk.Frame(control_panel, bg=self.frame_color)
+        self.kingside_var = tk.BooleanVar()
+        self.queenside_var = tk.BooleanVar()
+        self.create_castling_checkboxes()
         self.castling_frame.pack(pady=10)
+        
+        self.status_label = tk.Label(control_panel, text="", font=('Segoe UI', 10),
+                                    bg=self.frame_color, fg=self.text_color, wraplength=300)
+        self.status_label.pack(fill='x', pady=10)
+        control_panel.pack(padx=30, pady=20, fill='both', expand=True)
 
-    def show_color_selection(self):
-        self.color_frame.pack(expand=True, fill=tk.BOTH, pady=20)
-        self.lbl_color.pack(pady=5)
-        self.btn_white.pack(pady=5)
-        self.btn_black.pack(pady=5)
+    def update_depth_label(self, value):
+        self.depth_label.config(text=f"Depth: {int(float(value))}")
+        self.root.update_idletasks()
+        
+    def create_color_button(self, parent, text, color):
+        btn = tk.Button(parent, text=text, font=('Segoe UI', 10, 'bold'),
+                       width=10, bd=0, padx=15, pady=8,
+                       bg=self.accent_color, fg=self.text_color,
+                       activebackground=self.hover_color,
+                       activeforeground=self.text_color,
+                       command=lambda: self.set_color(color))
+        btn.pack(side=tk.LEFT, padx=5)
+        return btn
+
+    def create_action_button(self, parent, text, command):
+        return tk.Button(parent, text=text, font=('Segoe UI', 11, 'bold'),
+                        bg=self.accent_color, fg=self.text_color,
+                        activebackground=self.hover_color,
+                        activeforeground=self.text_color,
+                        bd=0, pady=10, command=command)
+
+    def create_castling_checkboxes(self):
+        style = ttk.Style()
+        style.configure("Castling.TCheckbutton", background=self.frame_color,
+                       foreground=self.text_color, font=('Segoe UI', 10))
+        
+        ttk.Checkbutton(self.castling_frame, text="Kingside Castle", 
+                        variable=self.kingside_var, style="Castling.TCheckbutton"
+                        ).grid(row=0, column=0, padx=10, sticky='w')
+        ttk.Checkbutton(self.castling_frame, text="Queenside Castle",
+                        variable=self.queenside_var, style="Castling.TCheckbutton"
+                        ).grid(row=1, column=0, padx=10, sticky='w')
 
     def set_color(self, color):
         self.color_indicator = color
         self.color_frame.pack_forget()
-        self.main_frame.pack(expand=True, fill=tk.BOTH, padx=20)
+        self.main_frame.pack(expand=True, fill=tk.BOTH)
         self.btn_play.config(state=tk.NORMAL)
         self.update_status(f"Playing as {'White' if color == 'w' else 'Black'}")
 
     def update_status(self, message):
         self.status_label.config(text=message)
+        self.depth_label.config(text=f"Depth: {self.depth_var.get()}")
         self.root.update()
 
     def capture_screenshot(self, path):
@@ -217,7 +216,7 @@ class ChessAssistant:
             )
 
             stockfish.stdin.write(f"position fen {fen}\n")
-            stockfish.stdin.write("go depth 15\n")
+            stockfish.stdin.write(f"go depth {self.depth_var.get()}\n")
             stockfish.stdin.flush()
             
             output = ""
@@ -362,7 +361,7 @@ class ChessAssistant:
         return " ".join(fields)
 
     def process_move(self):
-        self.root.after(0, lambda: self.update_status("Processing move..."))
+        self.root.after(0, lambda: self.update_status("Analyzing board..."))
 
         try:
             # Capture screenshot
@@ -377,7 +376,7 @@ class ChessAssistant:
             # Get detections from the image
             boxes = get_positions(screenshot_path)
             if not boxes:
-                self.root.after(0, lambda: self.update_status("No pieces detected."))
+                self.root.after(0, lambda: self.update_status("No board or pieces detected."))
                 return
 
             try:
