@@ -168,8 +168,15 @@ class ChessAssistant:
 
     def create_castling_checkboxes(self):
         style = ttk.Style()
-        style.configure("Castling.TCheckbutton", background=self.frame_color,
-                       foreground=self.text_color, font=('Segoe UI', 10))
+        style.configure("Castling.TCheckbutton",
+                        background="#373737",  # Default background color
+                        foreground="white",  # Default text color
+                        font=("Segoe UI", 10))  # Font configuration
+
+        # Set background color to black on hover (no change to text color)
+        style.map("Castling.TCheckbutton",
+                  background=[('active', '#333131'), ('pressed', '#333131')],
+                  foreground=[('active', 'white'), ('pressed', 'white')])
         
         ttk.Checkbutton(self.castling_frame, text="Kingside Castle", 
                         variable=self.kingside_var, style="Castling.TCheckbutton"
