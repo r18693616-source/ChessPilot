@@ -52,9 +52,10 @@ class ChessAssistant:
     def __init__(self, root):
         self.root = root
         self.root.title("Chess Assistant")
-        self.root.geometry("260x230")
+        # Increase window size to accommodate castling options nicely
+        self.root.geometry("350x300")
         self.root.resizable(False, False)
-        self.root.attributes('-topmost', True)  # For window (to prevent minimization)
+        self.root.attributes('-topmost', True)  # Prevent minimization
         self.color_indicator = None
         self.last_automated_click_time = 0
 
@@ -100,43 +101,78 @@ class ChessAssistant:
     def create_color_selection(self):
         self.color_frame = tk.Frame(self.root, bg=self.bg_color)
         self.lbl_color = tk.Label(self.color_frame, 
-                                text="Select Your Color:",
-                                bg=self.bg_color,
-                                fg=self.text_color,
-                                font=('Arial', 12))
+                                  text="Select Your Color:",
+                                  bg=self.bg_color,
+                                  fg=self.text_color,
+                                  font=('Arial', 12))
         self.btn_white = tk.Button(self.color_frame,
-                                 text="White",
-                                 command=lambda: self.set_color("w"),
-                                 bg=self.accent_color,
-                                 fg=self.text_color,
-                                 width=10)
+                                   text="White",
+                                   command=lambda: self.set_color("w"),
+                                   bg=self.accent_color,
+                                   fg=self.text_color,
+                                   width=10)
         self.btn_black = tk.Button(self.color_frame,
-                                 text="Black",
-                                 command=lambda: self.set_color("b"),
-                                 bg=self.accent_color,
-                                 fg=self.text_color,
-                                 width=10)
+                                   text="Black",
+                                   command=lambda: self.set_color("b"),
+                                   bg=self.accent_color,
+                                   fg=self.text_color,
+                                   width=10)
 
     def create_main_interface(self):
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
         self.btn_play = tk.Button(self.main_frame,
-                                text="Play Next Move",
-                                command=self.process_move_thread,
-                                bg=self.accent_color,
-                                fg=self.text_color,
-                                state=tk.DISABLED)
+                                  text="Play Next Move",
+                                  command=self.process_move_thread,
+                                  bg=self.accent_color,
+                                  fg=self.text_color,
+                                  state=tk.DISABLED)
         self.status_label = tk.Label(self.main_frame,
-                                    text="",
-                                    bg=self.bg_color,
-                                    fg=self.text_color,
-                                    wraplength=210,
-                                    anchor="center",
-                                    justify="center")
-
+                                     text="",
+                                     bg=self.bg_color,
+                                     fg=self.text_color,
+                                     wraplength=300,
+                                     anchor="center",
+                                     justify="center")
         
         self.btn_play.pack(pady=10)
+        # Create castling options UI (both independent)
+        self.create_castling_options()        
         self.status_label.pack(pady=10, fill=tk.BOTH, expand=True)
         self.main_frame.grid_propagate(False)
+
+    def create_castling_options(self):
+        """Creates two independent checkboxes for castling options with improved layout."""
+        self.castling_frame = tk.Frame(self.main_frame, bg=self.bg_color)
+        
+        # BooleanVars default to False (unticked)
+        self.kingside_var = tk.BooleanVar(value=False)
+        self.queenside_var = tk.BooleanVar(value=False)
+        
+        # Create checkbuttons with a fixed width so text fits nicely.
+        self.kingside_cb = tk.Checkbutton(self.castling_frame,
+                                          text="Kingside Castle",
+                                          variable=self.kingside_var,
+                                          bg=self.bg_color,
+                                          fg=self.text_color,
+                                          selectcolor=self.accent_color,
+                                          activebackground=self.bg_color,
+                                          activeforeground=self.text_color,
+                                          font=('Arial', 10),
+                                          width=16)
+        self.queenside_cb = tk.Checkbutton(self.castling_frame,
+                                           text="Queenside Castle",
+                                           variable=self.queenside_var,
+                                           bg=self.bg_color,
+                                           fg=self.text_color,
+                                           selectcolor=self.accent_color,
+                                           activebackground=self.bg_color,
+                                           activeforeground=self.text_color,
+                                           font=('Arial', 10),
+                                           width=16)
+        # Arrange the checkbuttons using grid.
+        self.kingside_cb.grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        self.queenside_cb.grid(row=0, column=1, padx=10, pady=5, sticky="w")
+        self.castling_frame.pack(pady=10)
 
     def show_color_selection(self):
         self.color_frame.pack(expand=True, fill=tk.BOTH, pady=20)
@@ -239,6 +275,92 @@ class ChessAssistant:
         self.last_automated_click_time = time.time()
         self.update_status(f"Executed move: {move}")
 
+    def expand_fen_row(self, row):
+        """Expands a FEN row string by replacing digits with that many spaces."""
+        expanded = ""
+        for char in row:
+            if char.isdigit():
+                expanded += " " * int(char)
+            else:
+                expanded += char
+        return expanded
+
+    def is_castling_possible(self, fen, color, side):
+        """
+        Checks if the king and the corresponding rook are in their original positions
+        based on the FEN's piece placement. Returns True if castling is physically possible.
+        """
+        board = fen.split()[0]
+        rows = board.split('/')
+        if color == "w":
+            # For white, the king should be on e1.
+            last_row = self.expand_fen_row(rows[-1])
+            if len(last_row) != 8 or last_row[4] != 'K':
+                return False
+            if side == 'kingside':
+                return last_row[7] == 'R'
+            elif side == 'queenside':
+                return last_row[0] == 'R'
+        else:
+            # For black, the king should be on e8.
+            first_row = self.expand_fen_row(rows[0])
+            if len(first_row) != 8 or first_row[4] != 'k':
+                return False
+            if side == 'kingside':
+                return first_row[7] == 'r'
+            elif side == 'queenside':
+                return first_row[0] == 'r'
+        return False
+
+    def update_fen_castling_rights(self, fen):
+        """
+        Updates the castling availability field of the FEN.
+        For each side (white and black), if castling is physically possible and (for the player's side)
+        the corresponding checkbox is ticked, the right is added.
+        Otherwise, only the opponent's rights (if any) are taken from the board.
+        If no rights are available, a '-' is used.
+        """
+        fields = fen.split()
+        # fields[0]: board, fields[1]: active color, fields[2]: current castling rights, etc.
+        # Recalculate castling rights:
+        white_castling = ""
+        # White kingside:
+        if self.is_castling_possible(fen, "w", "kingside"):
+            if self.color_indicator == "w":
+                if self.kingside_var.get():
+                    white_castling += "K"
+            else:
+                white_castling += "K"
+        # White queenside:
+        if self.is_castling_possible(fen, "w", "queenside"):
+            if self.color_indicator == "w":
+                if self.queenside_var.get():
+                    white_castling += "Q"
+            else:
+                white_castling += "Q"
+
+        black_castling = ""
+        # Black kingside:
+        if self.is_castling_possible(fen, "b", "kingside"):
+            if self.color_indicator == "b":
+                if self.kingside_var.get():
+                    black_castling += "k"
+            else:
+                black_castling += "k"
+        # Black queenside:
+        if self.is_castling_possible(fen, "b", "queenside"):
+            if self.color_indicator == "b":
+                if self.queenside_var.get():
+                    black_castling += "q"
+            else:
+                black_castling += "q"
+
+        new_castling = white_castling + black_castling
+        if new_castling == "":
+            new_castling = "-"
+        fields[2] = new_castling
+        return " ".join(fields)
+
     def process_move(self):
         self.root.after(0, lambda: self.update_status("Processing move..."))
 
@@ -259,11 +381,14 @@ class ChessAssistant:
                 return
 
             try:
-                # Get FEN and chessboard data
+                # Get FEN and chessboard data from boardreader
                 chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(self.color_indicator, boxes)
             except ValueError as e:
                 self.root.after(0, lambda: self.update_status(f"Error: {e}"))
                 return
+
+            # Update FEN's castling rights based on board state and ticked options.
+            fen = self.update_fen_castling_rights(fen)
 
             # Compute board positions based on chessboard data
             board_size = 8
@@ -274,13 +399,26 @@ class ChessAssistant:
                     y = chessboard_y + row * square_size + (square_size / 2)
                     board_positions[(col, row)] = (x, y)
 
+            # Get best move from Stockfish with the updated FEN.
             best_move = self.get_best_move(fen)
-
-            if best_move:
-                self.move_piece(best_move, board_positions)
-                self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
-            else:
+            if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
+                return
+
+            # If Stockfish recommends castling, execute it automatically if allowed.
+            castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
+            if best_move in castling_moves:
+                side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
+                # Only execute castling if the corresponding checkbox is ticked and FEN indicates it's possible.
+                if ((side == 'kingside' and self.kingside_var.get()) or (side == 'queenside' and self.queenside_var.get())):
+                    if self.is_castling_possible(fen, self.color_indicator, side):
+                        self.move_piece(best_move, board_positions)
+                        self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nCastling move executed: {best_move}"))
+                        return
+
+            # Otherwise, execute the best move as returned.
+            self.move_piece(best_move, board_positions)
+            self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
 
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{e}"))

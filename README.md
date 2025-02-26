@@ -13,14 +13,7 @@
 - **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
 - **Graphical User Interface (GUI)**: Provides a user-friendly interface instead of terminal-based interaction.
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.
-
----
-
-## ⚠️ Known Issues
-
-- **Accuracy**: The board detection accuracy depends on the image quality and piece positioning.
-- **Castling**: Not supported due to limitations in the current screenshot-based approach.
-- **Future Update**: The user will be prompted to indicate castling eligibility on each move via a tick mark.
+- **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
 
 ---
 
@@ -104,7 +97,10 @@ Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) 
    - Click **Black** if playing as Black.
    - Press **ESC** to go back and re-select your color.
 
-3. **Tips for Best Performance:**
+3. **Indicate Castling Rights:**
+   - Before each move, tick the checkbox for **Kingside Castle** or **Queenside Castle**, if applicable.
+
+4. **Tips for Best Performance:**
    - Use 100% zoom for better accuracy in chessboard detection.
    - After selecting "Play next move," the script will:
      - Extract the FEN from the image.
@@ -137,4 +133,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests if y
 ## Acknowledgments
 
 - Thanks to [Zai-Kun](https://github.com/Zai-Kun) for creating the chessboard detection model.
-
