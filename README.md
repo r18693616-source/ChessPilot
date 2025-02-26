@@ -22,9 +22,6 @@
 
 Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/ChessPilot/releases).
 
-- **Linux:** [ChessPilot-linux-v2.0.0](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v2.0.0/ChessPilot-linux-v2.0.0)
-- **Windows:** [ChessPilot-win-v2.0.0.exe](https://github.com/OTAKUWeBer/ChessPilot/releases/download/v2.0.0/ChessPilot-win-v2.0.0.exe)
-
 ---
 
 ## Prerequisites
@@ -137,3 +134,4 @@ Contributions are welcome! Feel free to open issues or submit pull requests if y
 ## Acknowledgments
 
 - Thanks to [Zai-Kun](https://github.com/Zai-Kun) for creating the chessboard detection model.
+
