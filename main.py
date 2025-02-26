@@ -371,8 +371,12 @@ class ChessAssistant:
         self.root.after(0, lambda: self.update_status("Analyzing board..."))
 
         try:
+            # Ensure the directory exists
+            screenshot_dir = Path("assets")
+            screenshot_dir.mkdir(parents=True, exist_ok=True)
+
             # Capture screenshot
-            screenshot_path = Path("chess-screenshot.png")
+            screenshot_path = screenshot_dir / "chess-screenshot.png"
             if screenshot_path.exists():
                 screenshot_path.unlink()
 
