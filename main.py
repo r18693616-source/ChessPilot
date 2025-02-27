@@ -256,7 +256,7 @@ class ChessPilot:
             end_row = row_map[move[3]]
             return (start_col, start_row), (end_col, end_row)
         except KeyError:
-            messagebox.showerror("Error", f"Invalid move notation: {move}")
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Invalid move notation: {move}"))
             return None, None
 
     def move_cursor_to_button(self):
@@ -286,7 +286,7 @@ class ChessPilot:
             start_pos = board_positions[start_idx]
             end_pos = board_positions[end_idx]
         except KeyError:
-            messagebox.showerror("Error", "Could not map move to board positions")
+            self.root.after(0, lambda: messagebox.showerror("Error", "Could not map move to board positions"))
             return
 
         start_x, start_y = start_pos
