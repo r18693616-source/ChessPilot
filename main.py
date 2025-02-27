@@ -190,12 +190,12 @@ class ChessPilot:
         self.color_frame.pack_forget()
         self.main_frame.pack(expand=True, fill=tk.BOTH)
         self.btn_play.config(state=tk.NORMAL)
-        self.update_status(f"Playing as {'White' if color == 'w' else 'Black'}")
+        self.update_status(f"\nPlaying as {'White' if color == 'w' else 'Black'}")
 
     def update_status(self, message):
         self.status_label.config(text=message)
         self.depth_label.config(text=f"Depth: {self.depth_var.get()}")
-        self.root.update()
+        self.root.update_idletasks()
 
     def capture_screenshot(self, path):
         try:
@@ -205,7 +205,7 @@ class ChessPilot:
                 mss.tools.to_png(sct_img.rgb, sct_img.size, output=str(path))
             return True
         except Exception as e:
-            messagebox.showerror("Error", f"Screenshot failed: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
             return False
 
     def get_best_move(self, fen):
@@ -238,7 +238,7 @@ class ChessPilot:
             stockfish.wait()
             return output.split()[1] if output else None
         except Exception as e:
-            messagebox.showerror("Error", f"Stockfish error: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Stockfish error: {e}"))
             return None
 
     def chess_notation_to_index(self, move):
@@ -259,6 +259,24 @@ class ChessPilot:
             messagebox.showerror("Error", f"Invalid move notation: {move}")
             return None, None
 
+    def move_cursor_to_button(self):
+        """Moves the cursor to the center of the 'Play Next Move' button."""
+        try:
+            # Get button position relative to the screen
+            x = self.btn_play.winfo_rootx()
+            y = self.btn_play.winfo_rooty()
+            width = self.btn_play.winfo_width()
+            height = self.btn_play.winfo_height()
+            
+            # Calculate center position
+            center_x = x + (width // 2)
+            center_y = y + (height // 2)
+            
+            # Move mouse to button center
+            pyautogui.moveTo(center_x, center_y, duration=0.1)
+        except Exception as e:
+            print(f"Error moving cursor: {e}")
+
     def move_piece(self, move, board_positions):
         start_idx, end_idx = self.chess_notation_to_index(move)
         if not start_idx or not end_idx:
@@ -278,8 +296,10 @@ class ChessPilot:
         self.last_automated_click_time = time.time()
         time.sleep(0.25)
         pyautogui.click(end_x, end_y)
-        self.last_automated_click_time = time.time()
-        self.update_status(f"Executed move: {move}")
+        self.last_automated_click_time = time.time()    
+                
+        # Move cursor back to play button after move
+        self.root.after(0, self.move_cursor_to_button)
 
     def expand_fen_row(self, row):
         """Expands a FEN row string by replacing digits with that many spaces."""
@@ -368,7 +388,9 @@ class ChessPilot:
         return " ".join(fields)
 
     def process_move(self):
-        self.root.after(0, lambda: self.update_status("Analyzing board..."))
+        # Disable the button immediately on the main thread
+        self.root.after(0, lambda: self.btn_play.config(state=tk.DISABLED))
+        self.root.after(0, lambda: self.update_status("\nAnalyzing board..."))
 
         try:
             # Ensure the directory exists
@@ -415,7 +437,7 @@ class ChessPilot:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
 
-            # If Stockfish recommends castling, execute it automatically if allowed.
+            # Handle castling automatically if allowed
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
@@ -423,15 +445,20 @@ class ChessPilot:
                 if ((side == 'kingside' and self.kingside_var.get()) or (side == 'queenside' and self.queenside_var.get())):
                     if self.is_castling_possible(fen, self.color_indicator, side):
                         self.move_piece(best_move, board_positions)
-                        self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nCastling move executed: {best_move}"))
+                        self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
                         return
 
             # Otherwise, execute the best move as returned.
             self.move_piece(best_move, board_positions)
             self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
-
+        
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{e}"))
+        
+        finally:
+            # Re-enable the button when process_move is complete
+            self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
+
 
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
