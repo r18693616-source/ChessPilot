@@ -409,7 +409,7 @@ class ChessPilot:
             # Get detections from the image
             boxes = get_positions(screenshot_path)
             if not boxes:
-                self.root.after(0, lambda: self.update_status("No board or pieces detected."))
+                self.root.after(0, lambda: self.update_status("\nNo board or pieces detected."))
                 return
 
             try:
