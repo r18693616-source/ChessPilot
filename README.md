@@ -20,7 +20,7 @@
 
 ## Download
 
-Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/ChessPilot/releases).
+Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/ChessPilot/releases/latest/).
 
 ---
 
