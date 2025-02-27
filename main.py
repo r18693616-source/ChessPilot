@@ -46,10 +46,10 @@ def resource_path(relative_path):
     return os.path.join(base_path, relative_path)
 
 
-class ChessAssistant:
+class ChessPilot:
     def __init__(self, root):
         self.root = root
-        self.root.title("Chess Assistant")
+        self.root.title("Chess Pilot")
         self.root.geometry("350x300")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
@@ -96,7 +96,7 @@ class ChessAssistant:
         # Color selection frame
         self.color_frame = tk.Frame(self.root, bg=self.bg_color)
         
-        header = tk.Label(self.color_frame, text="Chess Assistant", font=('Segoe UI', 16, 'bold'),
+        header = tk.Label(self.color_frame, text="Chess Pilot", font=('Segoe UI', 18, 'bold'),
                         bg=self.bg_color, fg=self.accent_color)
         header.pack(pady=(20, 10))
 
@@ -438,5 +438,5 @@ class ChessAssistant:
     
 if __name__ == "__main__":
     root = tk.Tk()
-    app = ChessAssistant(root)
+    app = ChessPilot(root)
     root.mainloop()
