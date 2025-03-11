@@ -1,4 +1,5 @@
 chess-screenshot.png
+current_board.png
 dist/
 build/
 *.spec
