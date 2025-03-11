@@ -9,7 +9,6 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk, ImageChops
-import imagehash
 import threading
 import shutil
 from boardreader import get_fen_from_position
@@ -516,7 +515,7 @@ class ChessPilot:
                     # 4. If different, store new state and make move
                     self.last_fen = current_fen_pieces
                     self.process_move_thread()
-                    time.sleep(2)  # Wait for move to complete
+                    time.sleep(1)  # Wait for move to complete
 
                 time.sleep(1)  # Check every 0.5 seconds
 
