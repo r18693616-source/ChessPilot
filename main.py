@@ -515,9 +515,9 @@ class ChessPilot:
                     # 4. If different, store new state and make move
                     self.last_fen = current_fen_pieces
                     self.process_move_thread()
-                    time.sleep(1)  # Wait for move to complete
+                    time.sleep(1)
 
-                time.sleep(1)  # Check every 0.5 seconds
+                time.sleep(1)
 
             except Exception as e:
                 print(f"Auto loop error: {e}")
