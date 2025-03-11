@@ -8,7 +8,8 @@ import sys
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageChops
+import imagehash
 import threading
 import shutil
 from boardreader import get_fen_from_position
@@ -55,7 +56,14 @@ class ChessPilot:
         self.root.attributes('-topmost', True)
         self.color_indicator = None
         self.last_automated_click_time = 0
+        self.last_fen = ""
         self.depth_var = tk.IntVar(value=15)
+        self.auto_mode_var = tk.BooleanVar(value=False)  # New variable for auto mode
+
+        # To store board cropping parameters for auto mode
+        self.chessboard_x = None
+        self.chessboard_y = None
+        self.square_size = None
 
         # Modern color scheme
         self.bg_color = "#2D2D2D"
@@ -91,6 +99,9 @@ class ChessPilot:
             self.color_indicator = None
             self.btn_play.config(state=tk.DISABLED)
             self.update_status("")
+            # If auto mode was running, turn it off
+            self.auto_mode_var.set(False)
+            self.btn_play.config(state=tk.NORMAL)
 
     def create_widgets(self):
         # Color selection frame
@@ -139,7 +150,12 @@ class ChessPilot:
         self.queenside_var = tk.BooleanVar()
         self.create_castling_checkboxes()
         self.castling_frame.pack(pady=10)
-        
+
+        # New Auto Next Move checkbox
+        self.auto_mode_check = ttk.Checkbutton(control_panel, text="Auto Next Move", 
+                                               variable=self.auto_mode_var, command=self.toggle_auto_mode)
+        self.auto_mode_check.pack(pady=5)
+
         self.status_label = tk.Label(control_panel, text="", font=('Segoe UI', 10),
                                     bg=self.frame_color, fg=self.text_color, wraplength=300)
         self.status_label.pack(fill='x', pady=10)
@@ -388,16 +404,13 @@ class ChessPilot:
         return " ".join(fields)
 
     def process_move(self):
-        # Disable the button immediately on the main thread
         self.root.after(0, lambda: self.btn_play.config(state=tk.DISABLED))
         self.root.after(0, lambda: self.update_status("\nAnalyzing board..."))
 
         try:
-            # Ensure the directory exists
             screenshot_dir = Path("assets")
             screenshot_dir.mkdir(parents=True, exist_ok=True)
 
-            # Capture screenshot
             screenshot_path = screenshot_dir / "chess-screenshot.png"
             if screenshot_path.exists():
                 screenshot_path.unlink()
@@ -406,23 +419,19 @@ class ChessPilot:
                 self.root.after(0, lambda: self.update_status("Screenshot failed!"))
                 return
 
-            # Get detections from the image
             boxes = get_positions(screenshot_path)
             if not boxes:
                 self.root.after(0, lambda: self.update_status("\nNo board or pieces detected."))
                 return
 
             try:
-                # Get FEN and chessboard data from boardreader
                 chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(self.color_indicator, boxes)
             except ValueError as e:
                 self.root.after(0, lambda: self.update_status(f"Error: {e}"))
                 return
 
-            # Update FEN's castling rights based on board state and ticked options.
             fen = self.update_fen_castling_rights(fen)
 
-            # Compute board positions based on chessboard data
             board_size = 8
             board_positions = {}
             for row in range(board_size):
@@ -431,38 +440,90 @@ class ChessPilot:
                     y = chessboard_y + row * square_size + (square_size / 2)
                     board_positions[(col, row)] = (x, y)
 
-            # Get best move from Stockfish with the updated FEN.
+            self.chessboard_x = chessboard_x
+            self.chessboard_y = chessboard_y
+            self.square_size = square_size
+
             best_move = self.get_best_move(fen)
             if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
 
-            # Handle castling automatically if allowed
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
-                # Only execute castling if the corresponding checkbox is ticked and FEN indicates it's possible.
                 if ((side == 'kingside' and self.kingside_var.get()) or (side == 'queenside' and self.queenside_var.get())):
                     if self.is_castling_possible(fen, self.color_indicator, side):
                         self.move_piece(best_move, board_positions)
                         self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
                         return
 
-            # Otherwise, execute the best move as returned.
             self.move_piece(best_move, board_positions)
             self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
-        
+
+            # Re-capture the screenshot and update last_fen with new data
+            time.sleep(0.5)  # Wait for the UI to update
+            self.capture_screenshot(screenshot_path)
+            boxes_after_move = get_positions(screenshot_path)
+            if boxes_after_move:
+                try:
+                    _, _, _, last_fen = get_fen_from_position(self.color_indicator, boxes_after_move)
+                    self.last_fen = last_fen.split(" ")[0]
+                except ValueError:
+                    pass
+
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{e}"))
-        
         finally:
-            # Re-enable the button when process_move is complete
-            self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
-
+            if not self.auto_mode_var.get():
+                self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
 
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
-    
+        
+    def toggle_auto_mode(self):
+        if self.auto_mode_var.get():
+            # Disable the manual play button.
+            self.btn_play.config(state=tk.DISABLED)
+            # Trigger an initial move to set cropping parameters.
+            self.process_move_thread()
+            # Start auto loop in a new thread.
+            threading.Thread(target=self.auto_move_loop, daemon=True).start()
+        else:
+            # Auto mode turned off; re-enable manual button.
+            self.btn_play.config(state=tk.NORMAL)
+
+    def auto_move_loop(self):
+        """Auto mode: Check board state and only move when it changes"""
+        while self.auto_mode_var.get():
+            try:
+                # 1. Capture current board state
+                screenshot_path = Path("assets") / "current_board.png"
+                if not self.capture_screenshot(screenshot_path):
+                    continue
+
+                # 2. Detect positions and get FEN
+                boxes = get_positions(screenshot_path)
+                if not boxes:
+                    continue
+
+                chessboard_x, chessboard_y, square_size, current_fen = get_fen_from_position(self.color_indicator, boxes)
+                current_fen_pieces = current_fen.split(" ")[0]  # Get just the piece positions
+
+                # 3. Compare with last known state
+                if current_fen_pieces != self.last_fen:
+                    print(f"Current Fen: {current_fen_pieces}, Last:{self.last_fen}")
+                    # 4. If different, store new state and make move
+                    self.last_fen = current_fen_pieces
+                    self.process_move_thread()
+                    time.sleep(2)  # Wait for move to complete
+
+                time.sleep(1)  # Check every 0.5 seconds
+
+            except Exception as e:
+                print(f"Auto loop error: {e}")
+                time.sleep(1)
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = ChessPilot(root)
