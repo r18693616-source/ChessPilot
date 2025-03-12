@@ -156,7 +156,7 @@ class ChessPilot:
             text="Auto Next Move",
             variable=self.auto_mode_var,
             command=self.toggle_auto_mode,
-            style="Castling.TCheckbutton"  # Applies the same UI style
+            style="Castling.TCheckbutton"
         )
         self.auto_mode_check.pack(pady=5, anchor="center")
 
@@ -513,7 +513,7 @@ class ChessPilot:
                 return
 
             # Re-capture the screenshot after making the move to update the board state
-            time.sleep(1)  # Allow UI to update
+            time.sleep(0.6)  # Allow UI to update
             screenshot_image_after = self.capture_screenshot_in_memory()
             if screenshot_image_after is not None:
                 boxes_after_move = get_positions(screenshot_image_after)
