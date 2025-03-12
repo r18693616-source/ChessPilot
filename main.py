@@ -442,6 +442,7 @@ class ChessPilot:
             boxes = get_positions(screenshot_image)
             if not boxes:
                 self.root.after(0, lambda: self.update_status("\nNo board or pieces detected."))
+                self.auto_mode_var.set(False)
                 return
 
             try:

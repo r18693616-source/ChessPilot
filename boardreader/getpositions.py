@@ -88,7 +88,7 @@ def get_positions(image_input):
         return predictions
     else:
         print("No predictions found.")
-        return []
+        return "Nothing"
 
 
 if __name__ == "__main__":
