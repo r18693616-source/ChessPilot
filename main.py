@@ -477,6 +477,11 @@ class ChessPilot:
                         self.root.after(0, lambda: self.update_status(status_msg))
                         time.sleep(1)  # Allow UI to update
 
+                        # Stop auto mode if checkmate was detected.
+                        if mate_flag:
+                            self.auto_mode_var.set(False)
+                            return
+
                         screenshot_image_after = self.capture_screenshot_in_memory()
                         if screenshot_image_after is not None:
                             boxes_after_move = get_positions(screenshot_image_after)
@@ -493,6 +498,11 @@ class ChessPilot:
             if mate_flag:
                 status_msg += "\nCheckmate"
             self.root.after(0, lambda: self.update_status(status_msg))
+
+            # Stop auto mode if checkmate was detected.
+            if mate_flag:
+                self.auto_mode_var.set(False)
+                return
 
             # Re-capture the screenshot after making the move to update the board state
             time.sleep(1)  # Allow UI to update
