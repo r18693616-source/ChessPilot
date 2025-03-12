@@ -150,15 +150,22 @@ class ChessPilot:
         self.create_castling_checkboxes()
         self.castling_frame.pack(pady=10)
 
-        # New Auto Next Move checkbox
-        self.auto_mode_check = ttk.Checkbutton(control_panel, text="Auto Next Move", 
-                                               variable=self.auto_mode_var, command=self.toggle_auto_mode)
-        self.auto_mode_check.pack(pady=5)
+        # New Auto Next Move checkbox with the same style as castling checkboxes
+        self.auto_mode_check = ttk.Checkbutton(
+            control_panel,
+            text="Auto Next Move",
+            variable=self.auto_mode_var,
+            command=self.toggle_auto_mode,
+            style="Castling.TCheckbutton"  # Applies the same UI style
+        )
+        self.auto_mode_check.pack(pady=5, anchor="center")
 
         self.status_label = tk.Label(control_panel, text="", font=('Segoe UI', 10),
                                     bg=self.frame_color, fg=self.text_color, wraplength=300)
         self.status_label.pack(fill='x', pady=10)
         control_panel.pack(padx=30, pady=20, fill='both', expand=True)
+        
+        self.main_frame.pack(expand=True, fill=tk.BOTH)
 
     def update_depth_label(self, value):
         self.depth_label.config(text=f"Depth: {int(float(value))}")
@@ -517,7 +524,9 @@ class ChessPilot:
                         pass
 
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{e}"))
+            error_message = str(e)  # Capture exception message
+            self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{error_message}"))
+            self.auto_mode_var.set(False)
         finally:
             self.processing_move = False
             if not self.auto_mode_var.get():
