@@ -1,6 +1,5 @@
 import pyautogui
 import time
-from pathlib import Path
 import subprocess
 import mss
 import mss.tools
@@ -9,7 +8,6 @@ import os
 import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
-import io
 import threading
 import shutil
 from boardreader import get_fen_from_position
