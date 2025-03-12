@@ -141,7 +141,7 @@ class ChessPilot:
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
         
         control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
-        self.btn_play = self.create_action_button(control_panel, "Play Next Move", self.process_move_thread)
+        self.btn_play = self.create_action_button(control_panel, "Play Next Moves", self.process_move_thread)
         self.btn_play.pack(fill='x', pady=5)
         
         self.castling_frame = tk.Frame(control_panel, bg=self.frame_color)
@@ -297,7 +297,7 @@ class ChessPilot:
             return None, None
 
     def move_cursor_to_button(self):
-        """Moves the cursor to the center of the 'Play Next Move' button."""
+        """Moves the cursor to the center of the 'Play Next Moves' button."""
         try:
             # Get button position relative to the screen
             x = self.btn_play.winfo_rootx()
