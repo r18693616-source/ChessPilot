@@ -8,7 +8,8 @@ import sys
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk, ImageChops
+from PIL import Image, ImageTk
+import io
 import threading
 import shutil
 from boardreader import get_fen_from_position
@@ -57,7 +58,8 @@ class ChessPilot:
         self.last_automated_click_time = 0
         self.last_fen = ""
         self.depth_var = tk.IntVar(value=15)
-        self.auto_mode_var = tk.BooleanVar(value=False)  # New variable for auto mode
+        self.auto_mode_var = tk.BooleanVar(value=False)
+        self.processing_move = False
 
         # To store board cropping parameters for auto mode
         self.chessboard_x = None
@@ -212,16 +214,17 @@ class ChessPilot:
         self.depth_label.config(text=f"Depth: {self.depth_var.get()}")
         self.root.update_idletasks()
 
-    def capture_screenshot(self, path):
+    def capture_screenshot_in_memory(self):
         try:
             with mss.mss() as sct:
                 monitor = sct.monitors[1]
                 sct_img = sct.grab(monitor)
-                mss.tools.to_png(sct_img.rgb, sct_img.size, output=str(path))
-            return True
+                # Create a Pillow Image from the raw data
+                image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
+            return image
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
-            return False
+            return None
 
     def get_best_move(self, fen):
         try:
@@ -403,22 +406,21 @@ class ChessPilot:
         return " ".join(fields)
 
     def process_move(self):
+        if self.processing_move:
+            return
+        self.processing_move = True
         self.root.after(0, lambda: self.btn_play.config(state=tk.DISABLED))
         self.root.after(0, lambda: self.update_status("\nAnalyzing board..."))
 
         try:
-            screenshot_dir = Path("assets")
-            screenshot_dir.mkdir(parents=True, exist_ok=True)
-
-            screenshot_path = screenshot_dir / "chess-screenshot.png"
-            if screenshot_path.exists():
-                screenshot_path.unlink()
-
-            if not self.capture_screenshot(screenshot_path):
+            # Capture the screenshot directly into memory
+            screenshot_image = self.capture_screenshot_in_memory()
+            if screenshot_image is None:
                 self.root.after(0, lambda: self.update_status("Screenshot failed!"))
                 return
 
-            boxes = get_positions(screenshot_path)
+            # Process the in-memory screenshot to get board positions
+            boxes = get_positions(screenshot_image)
             if not boxes:
                 self.root.after(0, lambda: self.update_status("\nNo board or pieces detected."))
                 return
@@ -439,6 +441,7 @@ class ChessPilot:
                     y = chessboard_y + row * square_size + (square_size / 2)
                     board_positions[(col, row)] = (x, y)
 
+            # Update instance attributes for board geometry
             self.chessboard_x = chessboard_x
             self.chessboard_y = chessboard_y
             self.square_size = square_size
@@ -451,7 +454,8 @@ class ChessPilot:
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
-                if ((side == 'kingside' and self.kingside_var.get()) or (side == 'queenside' and self.queenside_var.get())):
+                if ((side == 'kingside' and self.kingside_var.get()) or 
+                    (side == 'queenside' and self.queenside_var.get())):
                     if self.is_castling_possible(fen, self.color_indicator, side):
                         self.move_piece(best_move, board_positions)
                         self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
@@ -460,20 +464,23 @@ class ChessPilot:
             self.move_piece(best_move, board_positions)
             self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
 
-            # Re-capture the screenshot and update last_fen with new data
-            time.sleep(0.5)  # Wait for the UI to update
-            self.capture_screenshot(screenshot_path)
-            boxes_after_move = get_positions(screenshot_path)
-            if boxes_after_move:
-                try:
-                    _, _, _, last_fen = get_fen_from_position(self.color_indicator, boxes_after_move)
-                    self.last_fen = last_fen.split(" ")[0]
-                except ValueError:
-                    pass
+            # Re-capture the screenshot after making the move to update the board state
+            time.sleep(0.5)  # Allow UI to update
+            screenshot_image_after = self.capture_screenshot_in_memory()
+            if screenshot_image_after is not None:
+                boxes_after_move = get_positions(screenshot_image_after)
+                if boxes_after_move:
+                    try:
+                        _, _, _, last_fen = get_fen_from_position(self.color_indicator, boxes_after_move)
+                        self.last_fen = last_fen.split(" ")[0]
+                        print("after move: ", last_fen)
+                    except ValueError:
+                        pass
 
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{e}"))
         finally:
+            self.processing_move = False
             if not self.auto_mode_var.get():
                 self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
 
@@ -495,33 +502,32 @@ class ChessPilot:
     def auto_move_loop(self):
         """Auto mode: Check board state and only move when it changes"""
         while self.auto_mode_var.get():
+            if self.processing_move:
+                time.sleep(0.5)
+                continue
             try:
-                # 1. Capture current board state
-                screenshot_path = Path("assets") / "current_board.png"
-                if not self.capture_screenshot(screenshot_path):
+                screenshot_image = self.capture_screenshot_in_memory()
+                if screenshot_image is None:
                     continue
 
-                # 2. Detect positions and get FEN
-                boxes = get_positions(screenshot_path)
+                boxes = get_positions(screenshot_image)
                 if not boxes:
                     continue
 
                 chessboard_x, chessboard_y, square_size, current_fen = get_fen_from_position(self.color_indicator, boxes)
                 current_fen_pieces = current_fen.split(" ")[0]  # Get just the piece positions
 
-                # 3. Compare with last known state
                 if current_fen_pieces != self.last_fen:
-                    print(f"Current Fen: {current_fen_pieces}, Last:{self.last_fen}")
-                    # 4. If different, store new state and make move
+                    print(f"Current Fen: {current_fen_pieces}, Last: {self.last_fen}")
                     self.last_fen = current_fen_pieces
                     self.process_move_thread()
-                    time.sleep(1)
+                    time.sleep(0.5)
 
-                time.sleep(1)
+                time.sleep(0.5)
 
             except Exception as e:
                 print(f"Auto loop error: {e}")
-                time.sleep(1)
+                time.sleep(0.5)
 
 if __name__ == "__main__":
     root = tk.Tk()
