@@ -334,9 +334,9 @@ class ChessPilot:
         time.sleep(0.25)
         pyautogui.click(end_x, end_y)
         self.last_automated_click_time = time.time()    
-                
-        # Move cursor back to play button after move
-        self.root.after(0, self.move_cursor_to_button)
+        
+        if not self.auto_mode_var.get():       
+            self.root.after(0, self.move_cursor_to_button)
 
     def expand_fen_row(self, row):
         """Expands a FEN row string by replacing digits with that many spaces."""
@@ -503,7 +503,7 @@ class ChessPilot:
             self.move_piece(best_move, board_positions)
             status_msg = f"Best Move: {best_move}\nMove Played: {best_move}"
             if mate_flag:
-                status_msg += "\nCheckmate"
+                status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
             self.root.after(0, lambda: self.update_status(status_msg))
 
             # Stop auto mode if checkmate was detected.
@@ -525,7 +525,7 @@ class ChessPilot:
 
         except Exception as e:
             error_message = str(e)  # Capture exception message
-            self.root.after(0, lambda: messagebox.showerror("Error", f"An error occurred:\n{error_message}"))
+            self.root.after(0, lambda: self.update_status(f"Error: {error_message}"))
             self.auto_mode_var.set(False)
         finally:
             self.processing_move = False
