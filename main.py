@@ -457,21 +457,33 @@ class ChessPilot:
                     if self.is_castling_possible(fen, self.color_indicator, side):
                         self.move_piece(best_move, board_positions)
                         self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
-                        return
+                        time.sleep(1)  # Allow UI to update
+
+                        screenshot_image_after = self.capture_screenshot_in_memory()
+                        if screenshot_image_after is not None:
+                            boxes_after_move = get_positions(screenshot_image_after)
+                            if boxes_after_move:
+                                try:
+                                    _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
+                                    self.last_fen = lastfen.split(" ")[0]
+                                    print("after move: ", self.last_fen)
+                                except ValueError:
+                                    pass
+                            return
 
             self.move_piece(best_move, board_positions)
             self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
 
             # Re-capture the screenshot after making the move to update the board state
-            time.sleep(0.5)  # Allow UI to update
+            time.sleep(1)  # Allow UI to update
             screenshot_image_after = self.capture_screenshot_in_memory()
             if screenshot_image_after is not None:
                 boxes_after_move = get_positions(screenshot_image_after)
                 if boxes_after_move:
                     try:
-                        _, _, _, last_fen = get_fen_from_position(self.color_indicator, boxes_after_move)
-                        self.last_fen = last_fen.split(" ")[0]
-                        print("after move: ", last_fen)
+                        _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
+                        self.last_fen = lastfen.split(" ")[0]
+                        print("after move: ", self.last_fen)
                     except ValueError:
                         pass
 
@@ -499,10 +511,17 @@ class ChessPilot:
 
     def auto_move_loop(self):
         """Auto mode: Check board state and only move when it changes"""
+        
+        # Wait until last_fen gets a value
+        while self.last_fen == "" and self.auto_mode_var.get():
+            print("Waiting for last_fen to be set...")
+            time.sleep(0.3)
+
         while self.auto_mode_var.get():
             if self.processing_move:
-                time.sleep(0.5)
+                time.sleep(0.3)
                 continue
+
             try:
                 screenshot_image = self.capture_screenshot_in_memory()
                 if screenshot_image is None:
@@ -519,13 +538,14 @@ class ChessPilot:
                     print(f"Current Fen: {current_fen_pieces}, Last: {self.last_fen}")
                     self.last_fen = current_fen_pieces
                     self.process_move_thread()
-                    time.sleep(0.5)
+                    time.sleep(0.2)
 
-                time.sleep(0.5)
+                time.sleep(0.2)
 
             except Exception as e:
                 print(f"Auto loop error: {e}")
-                time.sleep(0.5)
+                time.sleep(0.2)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
