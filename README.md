@@ -11,10 +11,13 @@
 - **Automatic Board Flipping**: Automatically flips the board if you’re playing as Black.
 - **Stockfish Integration**: Uses the Stockfish chess engine to suggest the best move.
 - **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
+- **Auto Play Moves**: When enabled, the script will automatically make moves after the opponent’s move without requiring any further clicks (new feature).
+- **Manual Play**: A **"Play Next Move"** button allows you to manually play the next move after you analyze the board.
 - **Graphical User Interface (GUI)**: Provides a user-friendly interface instead of terminal-based interaction.
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.
 - **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
 - **New Feature – Depth Slider**: Users can now choose the depth for Stockfish's analysis via a slider. **Note**: More depth means longer processing time. The default depth is set to 15, which is recommended for a good balance between speed and accuracy.
+- **Screenshot Functionality Removed**: The screenshot feature has been removed as it was not required for optimal performance.
 
 ---
 
@@ -101,21 +104,26 @@ Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) 
 4. **Choose Depth for Move:**
    - Use the slider to select the desired depth for Stockfish's analysis. **Note**: The higher the depth, the more time it will take for Stockfish to compute the best move. The default depth is set to **15**, which is suggested for optimal performance.
 
-5. **Tips for Best Performance:**
+5. **Play the Game**:
+   - **Manual Mode**: Click the **"Play Next Move"** button to manually analyze and execute your next move.
+   - **Auto Mode**: Enable **"Auto Play Moves"** to let the script automatically play the next move after the opponent’s move without needing to click anything.
+
+6. **Tips for Best Performance:**
    - Use 100% zoom for better accuracy in chessboard detection.
-   - After selecting "Play next move," the script will:
+   - After selecting "Play next move" or enabling "Auto Play Moves," the script will:
      - Extract the FEN from the image.
      - Flip the board if playing as Black.
      - Retrieve the best move from Stockfish.
      - Automatically execute the move.
-   - The best move will be displayed in the GUI.
-   - For improved visibility, reposition the Tkinter window so the chessboard remains clear.
+     - The best move will be displayed in the GUI.
+     - For improved visibility, reposition the Tkinter window so the chessboard remains clear.
+   - In Auto Mode, the script will automatically make your next move after the opponent’s move.
 
 ---
 
 ## Disclaimer
 
-🛑 **Use at Your Own Risk:** Using this tool in online chess games may lead to account bans.
+🛑 **Use at Your Own Risk**: Using this tool in online chess games may lead to account bans.
 
 ---
 
@@ -134,4 +142,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests if y
 ## Acknowledgments
 
 - Thanks to [Zai-Kun](https://github.com/Zai-Kun) for creating the chessboard detection model.
-
