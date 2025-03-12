@@ -68,23 +68,27 @@ def predict(image):
         return []
 
 
-def get_positions(image_path):
+def get_positions(image_input):
     """
-    Loads an image, makes predictions, and prints the results.
+    Loads an image (from a file path or a PIL Image), makes predictions, and returns the bounding boxes.
     """
     try:
-        image = Image.open(image_path)
+        # Allow image_input to be either a file path (str) or a PIL Image
+        if isinstance(image_input, str):
+            image = Image.open(image_input)
+        else:
+            image = image_input
     except Exception as e:
         print(f"Error loading image: {e}")
-        return
+        return []
 
     predictions = predict(image)
 
     if predictions:
-        
         return predictions
     else:
         print("No predictions found.")
+        return []
 
 
 if __name__ == "__main__":
