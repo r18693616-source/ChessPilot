@@ -242,20 +242,34 @@ class ChessPilot:
             stockfish.stdin.write(f"go depth {self.depth_var.get()}\n")
             stockfish.stdin.flush()
             
-            output = ""
+            best_move = None
+            mate_flag = False
             while True:
                 line = stockfish.stdout.readline()
+                if not line:
+                    break
+                # Parse mate score if available
+                if "score mate" in line:
+                    try:
+                        # Extract the mate value (e.g., in "score mate 2", mate_val will be 2)
+                        parts = line.split("score mate")
+                        mate_val = int(parts[1].split()[0])
+                        # Only flag immediate mate (mate in 1) as checkmate
+                        if abs(mate_val) == 1:
+                            mate_flag = True
+                    except (IndexError, ValueError):
+                        pass
                 if line.startswith("bestmove"):
-                    output = line.strip()
+                    best_move = line.strip().split()[1]
                     break
 
             stockfish.stdin.write("quit\n")
             stockfish.stdin.flush()
             stockfish.wait()
-            return output.split()[1] if output else None
+            return best_move, mate_flag
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Stockfish error: {e}"))
-            return None
+            return None, False
 
     def chess_notation_to_index(self, move):
         if self.color_indicator == "w":
@@ -444,7 +458,8 @@ class ChessPilot:
             self.chessboard_y = chessboard_y
             self.square_size = square_size
 
-            best_move = self.get_best_move(fen)
+            best_move, mate_flag = self.get_best_move(fen)
+            
             if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
@@ -456,7 +471,10 @@ class ChessPilot:
                     (side == 'queenside' and self.queenside_var.get())):
                     if self.is_castling_possible(fen, self.color_indicator, side):
                         self.move_piece(best_move, board_positions)
-                        self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
+                        status_msg = f"\nBest Move: {best_move}\nCastling move executed: {best_move}"
+                        if mate_flag:
+                            status_msg += "\nCheckmate"
+                        self.root.after(0, lambda: self.update_status(status_msg))
                         time.sleep(1)  # Allow UI to update
 
                         screenshot_image_after = self.capture_screenshot_in_memory()
@@ -466,13 +484,15 @@ class ChessPilot:
                                 try:
                                     _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
                                     self.last_fen = lastfen.split(" ")[0]
-                                    print("after move: ", self.last_fen)
                                 except ValueError:
                                     pass
                             return
 
             self.move_piece(best_move, board_positions)
-            self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
+            status_msg = f"Best Move: {best_move}\nMove Played: {best_move}"
+            if mate_flag:
+                status_msg += "\nCheckmate"
+            self.root.after(0, lambda: self.update_status(status_msg))
 
             # Re-capture the screenshot after making the move to update the board state
             time.sleep(1)  # Allow UI to update
@@ -483,7 +503,6 @@ class ChessPilot:
                     try:
                         _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
                         self.last_fen = lastfen.split(" ")[0]
-                        print("after move: ", self.last_fen)
                     except ValueError:
                         pass
 
@@ -493,6 +512,7 @@ class ChessPilot:
             self.processing_move = False
             if not self.auto_mode_var.get():
                 self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
+
 
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
@@ -514,7 +534,6 @@ class ChessPilot:
         
         # Wait until last_fen gets a value
         while self.last_fen == "" and self.auto_mode_var.get():
-            print("Waiting for last_fen to be set...")
             time.sleep(0.3)
 
         while self.auto_mode_var.get():
@@ -535,7 +554,6 @@ class ChessPilot:
                 current_fen_pieces = current_fen.split(" ")[0]  # Get just the piece positions
 
                 if current_fen_pieces != self.last_fen:
-                    print(f"Current Fen: {current_fen_pieces}, Last: {self.last_fen}")
                     self.last_fen = current_fen_pieces
                     self.process_move_thread()
                     time.sleep(0.2)
