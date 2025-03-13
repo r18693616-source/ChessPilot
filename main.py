@@ -10,8 +10,7 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import threading
 import shutil
-from boardreader import get_fen_from_position
-from boardreader import get_positions
+from boardreader import get_fen_from_position, get_positions
 
 
 def get_stockfish_path():
@@ -229,6 +228,7 @@ class ChessPilot:
             return image
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
+            self.auto_mode_var.set(False)
             return None
 
     def get_best_move(self, fen):
@@ -276,6 +276,7 @@ class ChessPilot:
             return best_move, mate_flag
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Stockfish error: {e}"))
+            self.auto_mode_var.set(False)
             return None, False
 
     def chess_notation_to_index(self, move):
@@ -294,6 +295,7 @@ class ChessPilot:
             return (start_col, start_row), (end_col, end_row)
         except KeyError:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Invalid move notation: {move}"))
+            self.auto_mode_var.set(False)
             return None, None
 
     def move_cursor_to_button(self):
@@ -313,6 +315,7 @@ class ChessPilot:
             pyautogui.moveTo(center_x, center_y, duration=0.1)
         except Exception as e:
             print(f"Error moving cursor: {e}")
+            self.auto_mode_var.set(False)
 
     def move_piece(self, move, board_positions):
         start_idx, end_idx = self.chess_notation_to_index(move)
@@ -324,6 +327,7 @@ class ChessPilot:
             end_pos = board_positions[end_idx]
         except KeyError:
             self.root.after(0, lambda: messagebox.showerror("Error", "Could not map move to board positions"))
+            self.auto_mode_var.set(False)
             return
 
         start_x, start_y = start_pos
@@ -449,6 +453,7 @@ class ChessPilot:
                 chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(self.color_indicator, boxes)
             except ValueError as e:
                 self.root.after(0, lambda: self.update_status(f"Error: {e}"))
+                self.auto_mode_var.set(False)
                 return
 
             fen = self.update_fen_castling_rights(fen)
