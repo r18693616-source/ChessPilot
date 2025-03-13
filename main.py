@@ -141,7 +141,7 @@ class ChessPilot:
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
         
         control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
-        self.btn_play = self.create_action_button(control_panel, "Play Next Moves", self.process_move_thread)
+        self.btn_play = self.create_action_button(control_panel, "Play Next Move", self.process_move_thread)
         self.btn_play.pack(fill='x', pady=5)
         
         self.castling_frame = tk.Frame(control_panel, bg=self.frame_color)
@@ -150,10 +150,10 @@ class ChessPilot:
         self.create_castling_checkboxes()
         self.castling_frame.pack(pady=10)
 
-        # New Auto Next Move checkbox with the same style as castling checkboxes
+        # New Auto Next Moves checkbox with the same style as castling checkboxes
         self.auto_mode_check = ttk.Checkbutton(
             control_panel,
-            text="Auto Next Move",
+            text="Auto Next Moves",
             variable=self.auto_mode_var,
             command=self.toggle_auto_mode,
             style="Castling.TCheckbutton"
@@ -297,7 +297,7 @@ class ChessPilot:
             return None, None
 
     def move_cursor_to_button(self):
-        """Moves the cursor to the center of the 'Play Next Moves' button."""
+        """Moves the cursor to the center of the 'Play Next Move' button."""
         try:
             # Get button position relative to the screen
             x = self.btn_play.winfo_rootx()
