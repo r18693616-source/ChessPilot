@@ -57,6 +57,7 @@ class ChessPilot:
         self.depth_var = tk.IntVar(value=15)
         self.auto_mode_var = tk.BooleanVar(value=False)
         self.processing_move = False
+        self.expected_fen = tk.StringVar()
 
         # To store board cropping parameters for auto mode
         self.chessboard_x = None
@@ -245,23 +246,21 @@ class ChessPilot:
                 creationflags=flags
             )
 
+            # Set the position and calculate best move
             stockfish.stdin.write(f"position fen {fen}\n")
             stockfish.stdin.write(f"go depth {self.depth_var.get()}\n")
             stockfish.stdin.flush()
-            
+
             best_move = None
             mate_flag = False
             while True:
                 line = stockfish.stdout.readline()
                 if not line:
                     break
-                # Parse mate score if available
                 if "score mate" in line:
                     try:
-                        # Extract the mate value (e.g., in "score mate 2", mate_val will be 2)
                         parts = line.split("score mate")
                         mate_val = int(parts[1].split()[0])
-                        # Only flag immediate mate (mate in 1) as checkmate
                         if abs(mate_val) == 1:
                             mate_flag = True
                     except (IndexError, ValueError):
@@ -270,14 +269,30 @@ class ChessPilot:
                     best_move = line.strip().split()[1]
                     break
 
+            # Play the best move and get the updated FEN
+            updated_fen = None
+            if best_move:
+                stockfish.stdin.write(f"position fen {fen} moves {best_move}\n")  # Apply the move
+                stockfish.stdin.write("d\n")  # Display new position
+                stockfish.stdin.flush()
+
+                while True:
+                    line = stockfish.stdout.readline()
+                    if "Fen:" in line:  # Extract updated FEN
+                        updated_fen = line.split("Fen:")[1].strip()
+                        self.expected_fen.set(updated_fen)
+                        break
+
             stockfish.stdin.write("quit\n")
             stockfish.stdin.flush()
             stockfish.wait()
-            return best_move, mate_flag
+            
+            return best_move, updated_fen, mate_flag
+
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Stockfish error: {e}"))
             self.auto_mode_var.set(False)
-            return None, False
+            return None, None, False
 
     def chess_notation_to_index(self, move):
         if self.color_indicator == "w":
@@ -471,12 +486,43 @@ class ChessPilot:
             self.chessboard_y = chessboard_y
             self.square_size = square_size
 
-            best_move, mate_flag = self.get_best_move(fen)
-            
+            best_move, updated_fen, mate_flag = self.get_best_move(fen)
+
             if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
 
+            # Verification loop (common for both move types)
+            def verify_move(move):
+                attempts = 0
+                max_attempts = 3
+                move_successful = False
+                expected_fen_pieces = self.expected_fen.get().split(" ")[0]  # Only compare piece placements
+
+                while attempts < max_attempts:
+                    time.sleep(0.3)  # Allow UI to update and board to settle
+                    screenshot_image_after = self.capture_screenshot_in_memory()
+                    if screenshot_image_after is None:
+                        break
+                    boxes_after_move = get_positions(screenshot_image_after)
+                    if boxes_after_move:
+                        try:
+                            _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
+                            current_fen_pieces = lastfen.split(" ")[0]
+                            if current_fen_pieces == expected_fen_pieces:
+                                move_successful = True
+                                self.last_fen = current_fen_pieces
+                                break
+                            else:
+                                attempts += 1
+                                self.move_piece(move, board_positions)
+                        except ValueError:
+                            pass
+                    else:
+                        attempts += 1
+                return move_successful
+
+            # Special handling for castling moves
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
@@ -490,47 +536,36 @@ class ChessPilot:
                         self.root.after(0, lambda: self.update_status(status_msg))
                         time.sleep(1)  # Allow UI to update
 
-                        # Stop auto mode if checkmate was detected.
-                        if mate_flag:
+                        # If checkmate, verify the mate board state as well
+                        if mate_flag or not verify_move(best_move):
+                            if not mate_flag:
+                                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
                             self.auto_mode_var.set(False)
                             return
+                        # If move is verified successfully, exit castling branch
+                        return
 
-                        screenshot_image_after = self.capture_screenshot_in_memory()
-                        if screenshot_image_after is not None:
-                            boxes_after_move = get_positions(screenshot_image_after)
-                            if boxes_after_move:
-                                try:
-                                    _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
-                                    self.last_fen = lastfen.split(" ")[0]
-                                except ValueError:
-                                    pass
-                            return
-
+            # Execute normal move
             self.move_piece(best_move, board_positions)
             status_msg = f"Best Move: {best_move}\nMove Played: {best_move}"
             if mate_flag:
                 status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
             self.root.after(0, lambda: self.update_status(status_msg))
 
-            # Stop auto mode if checkmate was detected.
             if mate_flag:
+                # Verify mate state if needed
+                if not verify_move(best_move):
+                    self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
                 self.auto_mode_var.set(False)
                 return
 
-            # Re-capture the screenshot after making the move to update the board state
-            time.sleep(0.6)  # Allow UI to update
-            screenshot_image_after = self.capture_screenshot_in_memory()
-            if screenshot_image_after is not None:
-                boxes_after_move = get_positions(screenshot_image_after)
-                if boxes_after_move:
-                    try:
-                        _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
-                        self.last_fen = lastfen.split(" ")[0]
-                    except ValueError:
-                        pass
+            # After the move, verify that the board state matches the expected FEN.
+            if not verify_move(best_move):
+                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
+                self.auto_mode_var.set(False)
 
         except Exception as e:
-            error_message = str(e)  # Capture exception message
+            error_message = str(e)
             self.root.after(0, lambda: self.update_status(f"Error: {error_message}"))
             self.auto_mode_var.set(False)
         finally:
