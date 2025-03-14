@@ -534,7 +534,7 @@ class ChessPilot:
                         if mate_flag:
                             status_msg += "\nCheckmate"
                         self.root.after(0, lambda: self.update_status(status_msg))
-                        time.sleep(1)  # Allow UI to update
+                        time.sleep(0.3)  # Allow UI to update
 
                         # If checkmate, verify the mate board state as well
                         if mate_flag or not verify_move(best_move):
