@@ -526,7 +526,7 @@ class ChessPilot:
                         attempts += 1
                         self.root.after(0, lambda a=attempts, m=max_attempts: 
                                         self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
-                return move_successful
+                return move_successful, attempts
 
             # Special handling for castling moves
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
@@ -542,13 +542,16 @@ class ChessPilot:
                         self.root.after(0, lambda: self.update_status(status_msg))
                         time.sleep(0.3)  # Allow UI to update
 
-                        # If checkmate, verify the mate board state as well
-                        if mate_flag or not verify_move(best_move):
+                        success, attempts = verify_move(best_move)
+                        if mate_flag or not success:
                             if not mate_flag:
                                 self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
                             self.auto_mode_var.set(False)
                             return
-                        # If move is verified successfully, exit castling branch
+                        else:
+                            # If retry attempts were needed, update with a success message.
+                            if attempts > 0:
+                                self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
                         return
 
             # Execute normal move
@@ -559,16 +562,24 @@ class ChessPilot:
             self.root.after(0, lambda: self.update_status(status_msg))
 
             if mate_flag:
-                # Verify mate state if needed
-                if not verify_move(best_move):
+                success, attempts = verify_move(best_move)
+                if not success:
                     self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
+                    self.auto_mode_var.set(False)
+                else:
+                    if attempts > 0:
+                        self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
                 self.auto_mode_var.set(False)
                 return
 
             # After the move, verify that the board state matches the expected FEN.
-            if not verify_move(best_move):
-                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
+            success, attempts = verify_move(best_move)
+            if not success:
+                self.root.after(0, lambda: self.update_status("Piece didn't move 3 attempts."))
                 self.auto_mode_var.set(False)
+            else:
+                if attempts > 0:
+                    self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
 
         except Exception as e:
             error_message = str(e)
