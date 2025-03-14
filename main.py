@@ -538,7 +538,7 @@ class ChessPilot:
                         self.move_piece(best_move, board_positions)
                         status_msg = f"\nBest Move: {best_move}\nCastling move executed: {best_move}"
                         if mate_flag:
-                            status_msg += "\nCheckmate"
+                            status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
                         self.root.after(0, lambda: self.update_status(status_msg))
                         time.sleep(0.3)  # Allow UI to update
 
