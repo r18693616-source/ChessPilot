@@ -6,17 +6,17 @@
 
 ## Features
 
-- **Capture Chessboard**: Capture the chessboard with a single click.
-- **FEN Extraction**: Extracts the FEN from the captured image using [Zai-Kun's Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection).
+- **FEN Extraction**: Determines the FEN of the current board position using [Zai-Kun's Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection), ensuring accurate move analysis.
 - **Automatic Board Flipping**: Automatically flips the board if you’re playing as Black.
 - **Stockfish Integration**: Uses the Stockfish chess engine to suggest the best move.
 - **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
-- **Auto Play Moves**: When enabled, the script will automatically make moves after the opponent’s move without requiring any further clicks (new feature).
+- **Auto Play Moves**: When enabled, the script will automatically make moves after the opponent’s move without requiring any further clicks.
 - **Manual Play**: A **"Play Next Move"** button allows you to manually play the next move after you analyze the board.
 - **Graphical User Interface (GUI)**: Provides a user-friendly interface instead of terminal-based interaction.
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.
 - **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
 - **New Feature – Depth Slider**: Users can now choose the depth for Stockfish's analysis via a slider. **Note**: More depth means longer processing time. The default depth is set to 15, which is recommended for a good balance between speed and accuracy.
+- **New Feature – Retry Mechanism**: If the piece doesn’t move as expected, the tool will automatically retry the move up to **3 times**—displaying messages such as “Piece didn't move, retrying (1/3)”—to ensure the move is successfully executed.
 - **Screenshot Functionality Removed**: The screenshot feature has been removed as it was not required for optimal performance.
 
 ---
@@ -108,7 +108,12 @@ Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) 
    - **Manual Mode**: Click the **"Play Next Move"** button to manually analyze and execute your next move.
    - **Auto Mode**: Enable **"Auto Play Moves"** to let the script automatically play the next move after the opponent’s move without needing to click anything.
 
-6. **Tips for Best Performance:**
+6. **Retry Mechanism**:
+   - If the piece does not move as expected after executing a move (or castling move), the tool will automatically retry up to **3 times**.
+   - During each retry, the status will display messages like **"Piece didn't move, retrying (1/3)"**.
+   - Once the piece moves successfully, the tool will confirm with a success message, e.g., **"Best Move: e2e4 executed successfully after retry (2/3)."**
+
+7. **Tips for Best Performance:**
    - Use 100% zoom for better accuracy in chessboard detection.
    - After selecting "Play next move" or enabling "Auto Play Moves," the script will:
      - Extract the FEN from the image.
