@@ -124,7 +124,7 @@ class ChessPilot:
                 bg=self.frame_color, fg=self.text_color).pack(anchor='w')
         
         # Set the slider's command to update the label dynamically
-        self.depth_slider = ttk.Scale(depth_panel, from_=15, to=30, variable=self.depth_var,
+        self.depth_slider = ttk.Scale(depth_panel, from_=10, to=30, variable=self.depth_var,
                                     style="TScale", command=self.update_depth_label)
         self.depth_slider.pack(fill='x', pady=5)
         
