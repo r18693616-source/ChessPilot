@@ -1,10 +1,19 @@
 import numpy as np
 import onnxruntime as ort
 from PIL import Image
-from io import BytesIO
+import os
+import sys
 
-# Load the ONNX model
-session = ort.InferenceSession("chess_detection.onnx", providers=["CPUExecutionProvider"])
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller bundle """
+    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
+    return os.path.join(base_path, relative_path)
+
+# Use the helper function to get the correct model path
+model_path = resource_path("chess_detection.onnx")
+
+# Load the ONNX model from the correct path
+session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
 input_name = session.get_inputs()[0].name
 output_name = session.get_outputs()[0].name
 
