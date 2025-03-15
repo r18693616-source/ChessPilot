@@ -1,8 +1,5 @@
-import pyautogui
 import time
 import subprocess
-import mss
-import mss.tools
 import sys
 import os
 import tkinter as tk
@@ -12,6 +9,8 @@ import threading
 import shutil
 from boardreader import get_fen_from_position, get_positions
 
+def is_wayland():
+    return os.getenv("XDG_SESSION_TYPE") == "wayland"
 
 def get_stockfish_path():
     
@@ -35,6 +34,15 @@ def get_stockfish_path():
     return path
 
 stockfish_path = get_stockfish_path()
+
+if is_wayland():
+    import io
+    from input_capture import WaylandInput
+else:
+    import mss
+    import mss.tools
+    import pyautogui
+
 
 def resource_path(relative_path):
     try:
@@ -221,17 +229,21 @@ class ChessPilot:
 
     def capture_screenshot_in_memory(self):
         try:
-            with mss.mss() as sct:
-                monitor = sct.monitors[1]
-                sct_img = sct.grab(monitor)
-                # Create a Pillow Image from the raw data
-                image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
+            if is_wayland():
+                result = subprocess.run(["grim", "-"], stdout=subprocess.PIPE, check=True)
+                image = Image.open(io.BytesIO(result.stdout))
+            else:
+                with mss.mss() as sct:
+                    monitor = sct.monitors[1]
+                    sct_img = sct.grab(monitor)
+                    image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
+
             return image
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
             self.auto_mode_var.set(False)
             return None
-
+        
     def get_best_move(self, fen):
         try:
             flags = 0
@@ -325,9 +337,13 @@ class ChessPilot:
             # Calculate center position
             center_x = x + (width // 2)
             center_y = y + (height // 2)
-            
-            # Move mouse to button center
-            pyautogui.moveTo(center_x, center_y, duration=0.1)
+
+            if is_wayland():
+                client = WaylandInput()
+                client.click(int(center_x), int(center_y))  # Click at the center of the button
+            else:
+                pyautogui.moveTo(center_x, center_y, duration=0.1)  # Use pyautogui for X11 or other
+
         except Exception as e:
             print(f"Error moving cursor: {e}")
             self.auto_mode_var.set(False)
@@ -348,13 +364,21 @@ class ChessPilot:
         start_x, start_y = start_pos
         end_x, end_y = end_pos
 
-        pyautogui.click(start_x, start_y)
-        self.last_automated_click_time = time.time()
-        time.sleep(0.25)
-        pyautogui.click(end_x, end_y)
-        self.last_automated_click_time = time.time()    
-        
-        if not self.auto_mode_var.get():       
+        # Move the piece (click on start and end positions)
+        if is_wayland():
+            client = WaylandInput()
+            client.click(int(start_x), int(start_y), 0x110) # Click start position
+            time.sleep(0.25)
+            client.click(int(end_x), int(end_y), 0x110)  # Click end position
+        else:
+            pyautogui.click(start_x, start_y)
+            self.last_automated_click_time = time.time()
+            time.sleep(0.25)
+            pyautogui.click(end_x, end_y)
+            self.last_automated_click_time = time.time()
+
+        # Move the cursor back to the button if auto mode is off
+        if not self.auto_mode_var.get():
             self.root.after(0, self.move_cursor_to_button)
 
     def expand_fen_row(self, row):
@@ -575,7 +599,7 @@ class ChessPilot:
             # After the move, verify that the board state matches the expected FEN.
             success, attempts = verify_move(best_move)
             if not success:
-                self.root.after(0, lambda: self.update_status("Piece didn't move 3 attempts."))
+                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
                 self.auto_mode_var.set(False)
             else:
                 if attempts > 0:
@@ -638,8 +662,8 @@ class ChessPilot:
                 time.sleep(0.2)
 
             except Exception as e:
-                print(f"Auto loop error: {e}")
-                time.sleep(0.2)
+                self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
+                self.auto_mode_var.set(False)
 
 
 if __name__ == "__main__":

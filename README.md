@@ -79,6 +79,16 @@ Install Stockfish via your package manager:
   sudo dnf install stockfish
   ```
 
+#### Wayland Users (Hyprland, Sway)
+
+If you're using a Wayland compositor (such as Hyprland or Sway), you'll need to install additional dependencies for screenshot functionality and screen resolution detection:
+
+1. **Install Grim (for screenshots) and Wayland Utilities (for screen resolution detection):**
+
+   ```bash
+   sudo pacman -S grim wayland-utils
+   ```
+
 ### Windows Users
 
 Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) and place it in the same directory as `main.py`.
