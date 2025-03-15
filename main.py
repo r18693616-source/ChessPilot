@@ -539,15 +539,18 @@ class ChessPilot:
                                 break
                             else:
                                 attempts += 1
+                                time.sleep(0.2)
                                 self.root.after(0, lambda a=attempts, m=max_attempts: 
                                                 self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
                                 self.move_piece(move, board_positions)
                         except ValueError:
                             attempts += 1
+                            time.sleep(0.2)
                             self.root.after(0, lambda a=attempts, m=max_attempts: 
                                             self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
                     else:
                         attempts += 1
+                        time.sleep(0.2)
                         self.root.after(0, lambda a=attempts, m=max_attempts: 
                                         self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
                 return move_successful, attempts
