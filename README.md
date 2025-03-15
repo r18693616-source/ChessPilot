@@ -7,6 +7,7 @@
 ## Features
 
 - **FEN Extraction**: Determines the FEN of the current board position using [Zai-Kun's Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection), ensuring accurate move analysis.
+- **Optimized Model Inference**: The local ONNX model [chess_detection.onnx](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/latest) enhances speed and eliminates external API dependencies.
 - **Automatic Board Flipping**: Automatically flips the board if you’re playing as Black.
 - **Stockfish Integration**: Uses the Stockfish chess engine to suggest the best move.
 - **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
@@ -17,7 +18,7 @@
 - **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
 - **New Feature – Depth Slider**: Users can now choose the depth for Stockfish's analysis via a slider. **Note**: More depth means longer processing time. The default depth is set to 15, which is recommended for a good balance between speed and accuracy.
 - **New Feature – Retry Mechanism**: If the piece doesn’t move as expected, the tool will automatically retry the move up to **3 times**—displaying messages such as “Piece didn't move, retrying (1/3)”—to ensure the move is successfully executed.
-- **Screenshot Functionality Removed**: The screenshot feature has been removed as it was not required for optimal performance.
+- **Optimized Performance**: The removal of external APIs results in lower latency and improved move execution speed.
 
 ---
 
@@ -37,6 +38,7 @@ Ensure the following software is installed:
   - `mss` (`pip install mss`)
   - `Pillow` (`pip install Pillow`)
   - `pyautogui` (`pip install pyautogui`)
+  - `onnxruntime` (`pip install onnxruntime`)
   - `tkinter` (usually pre-installed with Python)
 - **Stockfish Chess Engine**: [Download here](https://stockfishchess.org/)
 
@@ -56,6 +58,12 @@ Ensure the following software is installed:
    ```bash
    pip install -r requirements.txt
    ```
+
+3. **Download the Chess Detection Model**
+
+   - Download the chessboard detection model from [Zai-Kun’s Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx)
+   - Rename it as `chess_detection.onnx`
+   - Place this file inside the `ChessPilot` directory (same as `main.py`).
 
 ### Linux Users
 
@@ -83,19 +91,14 @@ Install Stockfish via your package manager:
 
 If you're using a Wayland compositor (such as Hyprland or Sway), you'll need to install additional dependencies for screenshot functionality and screen resolution detection:
 
-1. **Install Grim (for screenshots) and Wayland Utilities (for screen resolution detection):**
-
-   ```bash
-   sudo pacman -S grim wayland-utils
-   ```
+```bash
+sudo pacman -S grim wayland-utils
+```
 
 ### Windows Users
 
-1. **Chess Detection Model**:  
-   Download the chessboard detection model from [Zai-Kun’s Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx) and rename it as `chess_detection.onnx`. Place this file in the same directory as `main.py`.
-
-2. **Stockfish**:  
-   - Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/), rename it to `stockfish.exe`, and place it in the same directory as `main.py`.
+1. **Stockfish**:
+   - Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/), rename it to `stockfish.exe`, and place it inside the `ChessPilot` directory (same as `main.py`).
 
 ---
 
@@ -108,21 +111,26 @@ If you're using a Wayland compositor (such as Hyprland or Sway), you'll need to 
    ```
 
 2. **Choose Your Color via the GUI:**
+
    - Click **White** if playing as White.
    - Click **Black** if playing as Black.
    - Press **ESC** to go back and re-select your color.
 
 3. **Indicate Castling Rights:**
+
    - Before each move, tick the checkbox for **Kingside Castle** or **Queenside Castle**, if applicable.
 
 4. **Choose Depth for Move:**
+
    - Use the slider to select the desired depth for Stockfish's analysis. **Note**: The higher the depth, the more time it will take for Stockfish to compute the best move. The default depth is set to **15**, which is suggested for optimal performance.
 
 5. **Play the Game**:
+
    - **Manual Mode**: Click the **"Play Next Move"** button to manually analyze and execute your next move.
    - **Auto Mode**: Enable **"Auto Play Moves"** to let the script automatically play the next move after the opponent’s move without needing to click anything.
 
 6. **Retry Mechanism**:
+
    - If the piece does not move as expected after executing a move (or castling move), the tool will automatically retry up to **3 times**.
    - During each retry, the status will display messages like **"Piece didn't move, retrying (1/3)"**.
    - Once the piece moves successfully, the tool will confirm with a success message, e.g., **"Best Move: e2e4 executed successfully after retry (2/3)."**
