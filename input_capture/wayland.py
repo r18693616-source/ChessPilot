@@ -157,6 +157,9 @@ class WaylandInput:
                 button_code = int(button)
             self.send_click(button_code)
 
+        self.send_sync_request()
+        self.handle_events()
+
 if __name__ == "__main__":
     if len(sys.argv) < 3 or len(sys.argv) > 4:
         print("Usage: python main.py <x> <y> [<button>]")
