@@ -168,4 +168,4 @@ Contributions are welcome! Feel free to open issues or submit pull requests if y
 
 ## Acknowledgments
 
-- Thanks to [Zai-Kun](https://github.com/Zai-Kun) for creating the chessboard detection model.
+- Thanks to [Zai-Kun](https://github.com/Zai-Kun) for creating the chessboard detection model and adding Wayland support.
