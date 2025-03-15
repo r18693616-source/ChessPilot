@@ -651,7 +651,7 @@ class ChessPilot:
                 if not boxes:
                     continue
 
-                chessboard_x, chessboard_y, square_size, current_fen = get_fen_from_position(self.color_indicator, boxes)
+                _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
                 current_fen_pieces = current_fen.split(" ")[0]  # Get just the piece positions
 
                 if current_fen_pieces != self.last_fen:

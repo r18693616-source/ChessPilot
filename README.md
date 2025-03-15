@@ -91,7 +91,11 @@ If you're using a Wayland compositor (such as Hyprland or Sway), you'll need to 
 
 ### Windows Users
 
-Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/) and place it in the same directory as `main.py`.
+1. **Chess Detection Model**:  
+   Download the chessboard detection model from [Zai-Kun’s Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx) and rename it as `chess_detection.onnx`. Place this file in the same directory as `main.py`.
+
+2. **Stockfish**:  
+   - Download `stockfish.exe` from [Stockfish](https://stockfishchess.org/download/), rename it to `stockfish.exe`, and place it in the same directory as `main.py`.
 
 ---
 

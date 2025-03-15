@@ -1,11 +1,14 @@
-import requests
+import numpy as np
+import onnxruntime as ort
 from PIL import Image
 from io import BytesIO
 
-# URL for the prediction endpoint
-url = "https://vercel-chess-detection.vercel.app/predict"
-conf = 0.7
+# Load the ONNX model
+session = ort.InferenceSession("chess_detection.onnx", providers=["CPUExecutionProvider"])
+input_name = session.get_inputs()[0].name
+output_name = session.get_outputs()[0].name
 
+conf = 0.7
 
 def letterbox_resize(image, target_size):
     """
@@ -20,60 +23,59 @@ def letterbox_resize(image, target_size):
 
     resized = image.resize((new_w, new_h), Image.LANCZOS)
 
-    # Calculate padding for only one dimension (either top/bottom or left/right)
-    x_offset = (target_size - new_w) // 2  # Padding for left/right
-    y_offset = (target_size - new_h) // 2  # Padding for top/bottom
+    x_offset = (target_size - new_w) // 2
+    y_offset = (target_size - new_h) // 2
 
-    # Create a new square image and paste the resized image onto it
     padded = Image.new("RGB", (target_size, target_size), (0, 0, 0))
     padded.paste(resized, (x_offset, y_offset))
 
     return padded, x_offset, y_offset, scale
 
+def preprocess_image(image):
+    """
+    Prepares the image for model inference by resizing, normalizing, and formatting.
+    """
+    image, x_offset, y_offset, scale = letterbox_resize(image, 640)
+    image = np.array(image).astype(np.float32) / 255.0  # Normalize
+    image = image.transpose(2, 0, 1)  # HWC to CHW
+    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    return image, x_offset, y_offset, scale
 
 def scale_bbox(detection, x_offset, y_offset, scale):
     """
-    Scales the bounding box to the original image size.
+    Scales bounding box coordinates from padded/resized image to original image dimensions.
     """
     x, y, w, h = detection[:4]
-    detection[0] = int((x - x_offset) / scale)
-    detection[1] = int((y - y_offset) / scale)
-    detection[2] = int((w - x) / scale)
-    detection[3] = int((h - y) / scale)
-    return detection
-
+    new_x = int((x - x_offset) / scale)
+    new_y = int((y - y_offset) / scale)
+    new_w = int((w - x) / scale)  # Width in original dimensions
+    new_h = int((h - y) / scale)  # Height in original dimensions
+    
+    scaled = detection.copy()
+    scaled[:4] = [new_x, new_y, new_w, new_h]
+    return scaled
 
 def predict(image):
     """
-    Makes a prediction using the resized image by sending it to the server.
-    Returns the scaled bounding boxes.
+    Runs model inference and returns processed detections.
     """
-    img, x_offset, y_offset, scale = letterbox_resize(image, 640)
-
-    # Convert the image to a byte array wrapped in a BytesIO object
-    img_byte_array = BytesIO()
-    img.save(img_byte_array, format="JPEG", quality=95)
-    img_byte_array.seek(0)  # Reset the stream to the beginning
-
-    # Send the image as a file via POST request
-    response = requests.post(url, files={"file": ("resized.png", img_byte_array, "image/jpg")})
-
-    if response.status_code == 200:
-        response_json = response.json()
-        return [
-            scale_bbox(r, x_offset, y_offset, scale) for r in response_json if r[4] > conf
-        ]
-    else:
-        print("Error:", response.status_code)
-        return []
-
+    img_array, x_offset, y_offset, scale = preprocess_image(image)
+    output = session.run([output_name], {input_name: img_array})[0]
+    output = np.squeeze(output)
+    
+    detections = []
+    for r in output:
+        if r[4] > conf:
+            scaled = scale_bbox(r, x_offset, y_offset, scale)
+            detections.append(scaled.tolist())  # Convert to list for compatibility
+    
+    return detections
 
 def get_positions(image_input):
     """
-    Loads an image (from a file path or a PIL Image), makes predictions, and returns the bounding boxes.
+    Handles image loading and executes prediction.
     """
     try:
-        # Allow image_input to be either a file path (str) or a PIL Image
         if isinstance(image_input, str):
             image = Image.open(image_input)
         else:
@@ -83,14 +85,8 @@ def get_positions(image_input):
         return []
 
     predictions = predict(image)
-
-    if predictions:
-        return predictions
-    else:
-        print("No predictions found.")
-        return "Nothing"
-
+    return predictions if predictions else "Nothing"
 
 if __name__ == "__main__":
-    image_path = "chess-screenshot.png"
-    get_positions(image_path)
+    image_path = "screenshot.png"
+    print(get_positions(image_path))

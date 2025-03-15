@@ -2,3 +2,5 @@ requests
 mss
 pyautogui
 Pillow
+onnxruntime
+numpy
