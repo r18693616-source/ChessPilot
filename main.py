@@ -64,8 +64,8 @@ class ChessPilot:
         self.last_fen = ""
         self.depth_var = tk.IntVar(value=15)
         self.auto_mode_var = tk.BooleanVar(value=False)
+        self.board_positions = {}
         self.processing_move = False
-        self.expected_fen = tk.StringVar()
 
         # To store board cropping parameters for auto mode
         self.chessboard_x = None
@@ -292,7 +292,6 @@ class ChessPilot:
                     line = stockfish.stdout.readline()
                     if "Fen:" in line:  # Extract updated FEN
                         updated_fen = line.split("Fen:")[1].strip()
-                        self.expected_fen.set(updated_fen)
                         break
 
             stockfish.stdin.write("quit\n")
@@ -475,149 +474,124 @@ class ChessPilot:
         self.root.after(0, lambda: self.update_status("\nAnalyzing board..."))
 
         try:
-            # Capture the screenshot directly into memory
             screenshot_image = self.capture_screenshot_in_memory()
-            if screenshot_image is None:
-                self.root.after(0, lambda: self.update_status("Screenshot failed!"))
+            if not screenshot_image:
                 return
 
-            # Process the in-memory screenshot to get board positions
             boxes = get_positions(screenshot_image)
             if not boxes:
-                self.root.after(0, lambda: self.update_status("\nNo board or pieces detected."))
+                self.root.after(0, lambda: self.update_status("\nNo board detected"))
                 self.auto_mode_var.set(False)
                 return
 
             try:
-                chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(self.color_indicator, boxes)
+                chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(
+                    self.color_indicator, boxes
+                )
             except ValueError as e:
                 self.root.after(0, lambda: self.update_status(f"Error: {e}"))
                 self.auto_mode_var.set(False)
                 return
 
             fen = self.update_fen_castling_rights(fen)
-
-            board_size = 8
-            board_positions = {}
-            for row in range(board_size):
-                for col in range(board_size):
-                    x = chessboard_x + col * square_size + (square_size / 2)
-                    y = chessboard_y + row * square_size + (square_size / 2)
-                    board_positions[(col, row)] = (x, y)
-
-            # Update instance attributes for board geometry
-            self.chessboard_x = chessboard_x
-            self.chessboard_y = chessboard_y
-            self.square_size = square_size
+            self.store_board_positions(chessboard_x, chessboard_y, square_size)
 
             best_move, updated_fen, mate_flag = self.get_best_move(fen)
-
             if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
 
-            # Verification loop (common for both move types)
-            def verify_move(move):
-                attempts = 0
-                max_attempts = 3
-                move_successful = False
-                expected_fen_pieces = self.expected_fen.get().split(" ")[0]  # Only compare piece placements
-
-                while attempts < max_attempts:
-                    time.sleep(0.4)  # Allow UI to update and board to settle
-                    screenshot_image_after = self.capture_screenshot_in_memory()
-                    if screenshot_image_after is None:
-                        break
-                    boxes_after_move = get_positions(screenshot_image_after)
-                    if boxes_after_move:
-                        try:
-                            _, _, _, lastfen = get_fen_from_position(self.color_indicator, boxes_after_move)
-                            current_fen_pieces = lastfen.split(" ")[0]
-                            if current_fen_pieces == expected_fen_pieces:
-                                move_successful = True
-                                self.last_fen = current_fen_pieces
-                                break
-                            else:
-                                attempts += 1
-                                time.sleep(0.2)
-                                self.root.after(0, lambda a=attempts, m=max_attempts: 
-                                                self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
-                                self.move_piece(move, board_positions)
-                        except ValueError:
-                            attempts += 1
-                            time.sleep(0.2)
-                            self.root.after(0, lambda a=attempts, m=max_attempts: 
-                                            self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
-                    else:
-                        attempts += 1
-                        time.sleep(0.2)
-                        self.root.after(0, lambda a=attempts, m=max_attempts: 
-                                        self.update_status(f"Piece didn't move, retrying ({a}/{m})"))
-                return move_successful, attempts
-
-            # Special handling for castling moves
+            # Special castling handling
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
                 if ((side == 'kingside' and self.kingside_var.get()) or 
                     (side == 'queenside' and self.queenside_var.get())):
                     if self.is_castling_possible(fen, self.color_indicator, side):
-                        self.move_piece(best_move, board_positions)
+                        self.move_piece(best_move, self.board_positions)
                         status_msg = f"\nBest Move: {best_move}\nCastling move executed: {best_move}"
                         if mate_flag:
                             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
-                        self.root.after(0, lambda: self.update_status(status_msg))
-                        time.sleep(0.4)  # Allow UI to update
-
-                        success, attempts = verify_move(best_move)
-                        if mate_flag or not success:
-                            if not mate_flag:
-                                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
                             self.auto_mode_var.set(False)
-                            return
-                        else:
-                            # If retry attempts were needed, update with a success message.
-                            if attempts > 0:
-                                self.root.after(0, lambda: self.update_status(f"\nBest Move: {best_move}\nCastling move executed: {best_move}"))
-                        return
-
-            # Execute normal move
-            self.move_piece(best_move, board_positions)
-            status_msg = f"Best Move: {best_move}\nMove Played: {best_move}"
-            if mate_flag:
-                status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
-            self.root.after(0, lambda: self.update_status(status_msg))
-
-            if mate_flag:
-                success, attempts = verify_move(best_move)
-                if not success:
-                    self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
-                    self.auto_mode_var.set(False)
-                else:
-                    if attempts > 0:
-                        self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
-                self.auto_mode_var.set(False)
-                return
-
-            # After the move, verify that the board state matches the expected FEN.
-            success, attempts = verify_move(best_move)
-            if not success:
-                self.root.after(0, lambda: self.update_status("Piece didn't move after 3 attempts."))
-                self.auto_mode_var.set(False)
+                        self.root.after(0, lambda: self.update_status(status_msg))
+                        time.sleep(0.4)
             else:
-                if attempts > 0:
-                    self.root.after(0, lambda: self.update_status(f"Best Move: {best_move}\nMove Played: {best_move}"))
+                self.execute_normal_move(best_move, mate_flag, updated_fen)
 
         except Exception as e:
-            error_message = str(e)
-            self.root.after(0, lambda: self.update_status(f"Error: {error_message}"))
+            self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
             self.auto_mode_var.set(False)
         finally:
             self.processing_move = False
             if not self.auto_mode_var.get():
                 self.root.after(0, lambda: self.btn_play.config(state=tk.NORMAL))
 
+    def store_board_positions(self, x, y, size):
+        self.chessboard_x = x
+        self.chessboard_y = y
+        self.square_size = size
+        self.board_positions.clear()
+        for row in range(8):
+            for col in range(8):
+                pos_x = x + col * size + (size // 2)
+                pos_y = y + row * size + (size // 2)
+                self.board_positions[(col, row)] = (pos_x, pos_y)
 
+    def execute_normal_move(self, move, mate_flag, expected_fen):
+        self.move_piece(move, self.board_positions)
+        status_msg = f"Best Move: {move}\n Move Played: {move}"
+        if mate_flag:
+            status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
+            self.auto_mode_var.set(False)
+        self.root.after(0, lambda: self.update_status(status_msg))
+        
+        success, attempts = self.verify_move(move, expected_fen)
+        if not success:
+            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
+            self.auto_mode_var.set(False)
+
+    def verify_move(self, move, expected_fen):
+        attempts = 0
+        max_attempts = 3
+        expected_pieces = expected_fen.split()[0]
+        
+        while attempts < max_attempts:
+            time.sleep(0.4)
+            screenshot = self.capture_screenshot_in_memory()
+            if not screenshot:
+                break
+
+            boxes = get_positions(screenshot)
+            if not boxes:
+                attempts += 1
+                continue
+
+            try:
+                _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
+                fen_parts = current_fen.split()
+                
+                # Success conditions:
+                # 1. Active color changed to opponent's turn
+                # 2. Pieces match expected FEN
+                # 3. At least 1 second has passed since move
+                if len(fen_parts) > 1 and fen_parts[1] != self.color_indicator:
+                    self.last_fen = fen_parts[0]
+                    return True, attempts
+                
+                if fen_parts[0] == expected_pieces:
+                    self.last_fen = fen_parts[0]
+                    return True, attempts
+
+            except ValueError:
+                pass
+
+            attempts += 1
+            self.root.after(0, lambda a=attempts: 
+                          self.update_status(f"Verifying... ({a}/{max_attempts})"))
+            self.move_piece(move, self.board_positions)
+
+        return False, attempts
+    
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
         
@@ -634,40 +608,54 @@ class ChessPilot:
             self.btn_play.config(state=tk.NORMAL)
 
     def auto_move_loop(self):
-        """Auto mode: Check board state and only move when it changes"""
-        
-        # Wait until last_fen gets a value
-        while self.last_fen == "" and self.auto_mode_var.get():
-            time.sleep(0.3)
-
+        """Enhanced auto mode with turn detection and FEN stability checks"""
         while self.auto_mode_var.get():
-            if self.processing_move:
-                time.sleep(0.3)
+            if self.processing_move or not self.board_positions:
+                time.sleep(0.5)
                 continue
 
             try:
-                screenshot_image = self.capture_screenshot_in_memory()
-                if screenshot_image is None:
+                screenshot = self.capture_screenshot_in_memory()
+                if not screenshot:
                     continue
 
-                boxes = get_positions(screenshot_image)
+                boxes = get_positions(screenshot)
                 if not boxes:
                     continue
 
                 _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
-                current_fen_pieces = current_fen.split(" ")[0]  # Get just the piece positions
+                fen_parts = current_fen.split()
+                if len(fen_parts) < 2:
+                    continue
 
-                if current_fen_pieces != self.last_fen:
-                    self.last_fen = current_fen_pieces
-                    self.process_move_thread()
-                    time.sleep(0.2)
+                current_pieces = fen_parts[0]
+                active_color = fen_parts[1]
 
-                time.sleep(0.2)
+                # Only act if it's our turn and board state changed
+                if active_color == self.color_indicator and current_pieces != self.last_fen:
+                    # Confirm FEN stability after short delay
+                    time.sleep(0.5)
+                    confirm_fen = self.get_current_fen()
+                    if confirm_fen and confirm_fen.split()[0] == current_pieces:
+                        self.last_fen = current_pieces
+                        self.process_move_thread()
+                        # Extra pause to allow opponent's move
+                        time.sleep(0.4)
 
             except Exception as e:
-                self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
+                self.root.after(0, lambda e=e: self.update_status(f"Error: {str(e)}"))
                 self.auto_mode_var.set(False)
 
+    def get_current_fen(self):
+        """Helper to get current FEN with error handling"""
+        try:
+            screenshot = self.capture_screenshot_in_memory()
+            boxes = get_positions(screenshot)
+            if boxes:
+                _, _, _, fen = get_fen_from_position(self.color_indicator, boxes)
+                return fen
+        except Exception:
+            return None
 
 if __name__ == "__main__":
     root = tk.Tk()
