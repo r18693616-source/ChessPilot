@@ -368,7 +368,7 @@ class ChessPilot:
         if is_wayland():
             client = WaylandInput()
             client.click(int(start_x), int(start_y), 0x110) # Click start position
-            time.sleep(0.25)
+            time.sleep(0.3)
             client.click(int(end_x), int(end_y), 0x110)  # Click end position
         else:
             pyautogui.click(start_x, start_y)
@@ -524,7 +524,7 @@ class ChessPilot:
                 expected_fen_pieces = self.expected_fen.get().split(" ")[0]  # Only compare piece placements
 
                 while attempts < max_attempts:
-                    time.sleep(0.3)  # Allow UI to update and board to settle
+                    time.sleep(0.4)  # Allow UI to update and board to settle
                     screenshot_image_after = self.capture_screenshot_in_memory()
                     if screenshot_image_after is None:
                         break
@@ -564,7 +564,7 @@ class ChessPilot:
                         if mate_flag:
                             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
                         self.root.after(0, lambda: self.update_status(status_msg))
-                        time.sleep(0.3)  # Allow UI to update
+                        time.sleep(0.4)  # Allow UI to update
 
                         success, attempts = verify_move(best_move)
                         if mate_flag or not success:
