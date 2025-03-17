@@ -13,24 +13,18 @@ def is_wayland():
     return os.getenv("XDG_SESSION_TYPE") == "wayland"
 
 def get_stockfish_path():
-    
     if getattr(sys, 'frozen', False):
         path = os.path.join(sys._MEIPASS, "stockfish.exe" if os.name == "nt" else "stockfish")
     else:
         if os.name == "nt":
             path = "stockfish.exe"
         else:
-            # For Linux, try to find stockfish in the PATH
             path = shutil.which("stockfish")
-            # If not found in PATH, fallback to a relative name
             if path is None:
                 path = "stockfish"
-
-    # Verify that the path exists and is executable
     if not (path and os.path.exists(path)):
         messagebox.showerror("Error", "Stockfish is missing! Make sure it's bundled properly.")
         sys.exit(1)
-
     return path
 
 stockfish_path = get_stockfish_path()
@@ -43,7 +37,6 @@ else:
     import mss.tools
     import pyautogui
 
-
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
@@ -51,12 +44,11 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
-
 class ChessPilot:
     def __init__(self, root):
         self.root = root
         self.root.title("Chess Pilot")
-        self.root.geometry("350x300")
+        self.root.geometry("350x350")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
         self.color_indicator = None
@@ -67,7 +59,10 @@ class ChessPilot:
         self.board_positions = {}
         self.processing_move = False
 
-        # To store board cropping parameters for auto mode
+        # New: Screenshot delay variable (0.0 to 1.0 seconds)
+        self.screenshot_delay_var = tk.DoubleVar(value=0.4)
+
+        # Board cropping parameters for auto mode
         self.chessboard_x = None
         self.chessboard_y = None
         self.square_size = None
@@ -79,7 +74,6 @@ class ChessPilot:
         self.text_color = "#FFFFFF"
         self.hover_color = "#45a049"
         
-        # Configure styles
         self.style = ttk.Style()
         self.style.theme_use('clam')
         self.style.configure("TScale", troughcolor=self.frame_color, background=self.bg_color)
@@ -106,12 +100,10 @@ class ChessPilot:
             self.color_indicator = None
             self.btn_play.config(state=tk.DISABLED)
             self.update_status("")
-            # If auto mode was running, turn it off
             self.auto_mode_var.set(False)
             self.btn_play.config(state=tk.NORMAL)
 
     def create_widgets(self):
-        # Color selection frame
         self.color_frame = tk.Frame(self.root, bg=self.bg_color)
         
         header = tk.Label(self.color_frame, text="Chess Pilot", font=('Segoe UI', 18, 'bold'),
@@ -131,21 +123,25 @@ class ChessPilot:
         tk.Label(depth_panel, text="Stockfish Depth:", font=('Segoe UI', 10),
                 bg=self.frame_color, fg=self.text_color).pack(anchor='w')
         
-        # Set the slider's command to update the label dynamically
         self.depth_slider = ttk.Scale(depth_panel, from_=10, to=30, variable=self.depth_var,
                                     style="TScale", command=self.update_depth_label)
         self.depth_slider.pack(fill='x', pady=5)
         
-        # Initialize depth label with the current value
         self.depth_label = tk.Label(depth_panel, text=f"Depth: {self.depth_var.get()}",
                                     font=('Segoe UI', 9), bg=self.frame_color, fg=self.text_color)
         self.depth_label.pack()
-        depth_panel.pack(fill='x', pady=10)
+
+        tk.Label(depth_panel, text="Auto Move Screenshot Delay (sec):", font=('Segoe UI', 10),
+                 bg=self.frame_color, fg=self.text_color).pack(anchor='w')
+        self.delay_spinbox = tk.Spinbox(depth_panel, from_=0.0, to=1.0, increment=0.1,
+                                        textvariable=self.screenshot_delay_var, format="%.1f", width=5,
+                                        state="readonly", justify="center")
+        self.delay_spinbox.pack(anchor='w')
         
+        depth_panel.pack(fill='x', pady=10)
         color_panel.pack(padx=30, pady=10, fill='x')
         self.color_frame.pack(expand=True, fill=tk.BOTH)
 
-        # Main interface frame
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
         
         control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
@@ -158,7 +154,6 @@ class ChessPilot:
         self.create_castling_checkboxes()
         self.castling_frame.pack(pady=10)
 
-        # New Auto Next Moves checkbox with the same style as castling checkboxes
         self.auto_mode_check = ttk.Checkbutton(
             control_panel,
             text="Auto Next Moves",
@@ -199,11 +194,9 @@ class ChessPilot:
     def create_castling_checkboxes(self):
         style = ttk.Style()
         style.configure("Castling.TCheckbutton",
-                        background="#373737",  # Default background color
-                        foreground="white",  # Default text color
-                        font=("Segoe UI", 10))  # Font configuration
-
-        # Set background color to black on hover (no change to text color)
+                        background="#373737",
+                        foreground="white",
+                        font=("Segoe UI", 10))
         style.map("Castling.TCheckbutton",
                   background=[('active', '#333131'), ('pressed', '#333131')],
                   foreground=[('active', 'white'), ('pressed', 'white')])
@@ -237,7 +230,6 @@ class ChessPilot:
                     monitor = sct.monitors[1]
                     sct_img = sct.grab(monitor)
                     image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
-
             return image
         except Exception as e:
             self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
@@ -257,8 +249,6 @@ class ChessPilot:
                 text=True,
                 creationflags=flags
             )
-
-            # Set the position and calculate best move
             stockfish.stdin.write(f"position fen {fen}\n")
             stockfish.stdin.write(f"go depth {self.depth_var.get()}\n")
             stockfish.stdin.flush()
@@ -281,16 +271,14 @@ class ChessPilot:
                     best_move = line.strip().split()[1]
                     break
 
-            # Play the best move and get the updated FEN
             updated_fen = None
             if best_move:
-                stockfish.stdin.write(f"position fen {fen} moves {best_move}\n")  # Apply the move
-                stockfish.stdin.write("d\n")  # Display new position
+                stockfish.stdin.write(f"position fen {fen} moves {best_move}\n")
+                stockfish.stdin.write("d\n")
                 stockfish.stdin.flush()
-
                 while True:
                     line = stockfish.stdout.readline()
-                    if "Fen:" in line:  # Extract updated FEN
+                    if "Fen:" in line:
                         updated_fen = line.split("Fen:")[1].strip()
                         break
 
@@ -312,7 +300,6 @@ class ChessPilot:
         else:
             col_map = {'a':7, 'b':6, 'c':5, 'd':4, 'e':3, 'f':2, 'g':1, 'h':0}
             row_map = {'1':0, '2':1, '3':2, '4':3, '5':4, '6':5, '7':6, '8':7}
-        
         try:
             start_col = col_map[move[0]]
             start_row = row_map[move[1]]
@@ -325,24 +312,18 @@ class ChessPilot:
             return None, None
 
     def move_cursor_to_button(self):
-        """Moves the cursor to the center of the 'Play Next Move' button."""
         try:
-            # Get button position relative to the screen
             x = self.btn_play.winfo_rootx()
             y = self.btn_play.winfo_rooty()
             width = self.btn_play.winfo_width()
             height = self.btn_play.winfo_height()
-            
-            # Calculate center position
             center_x = x + (width // 2)
             center_y = y + (height // 2)
-
             if is_wayland():
                 client = WaylandInput()
-                client.click(int(center_x), int(center_y))  # Click at the center of the button
+                client.click(int(center_x), int(center_y))
             else:
-                pyautogui.moveTo(center_x, center_y, duration=0.1)  # Use pyautogui for X11 or other
-
+                pyautogui.moveTo(center_x, center_y, duration=0.1)
         except Exception as e:
             print(f"Error moving cursor: {e}")
             self.auto_mode_var.set(False)
@@ -351,7 +332,6 @@ class ChessPilot:
         start_idx, end_idx = self.chess_notation_to_index(move)
         if not start_idx or not end_idx:
             return
-
         try:
             start_pos = board_positions[start_idx]
             end_pos = board_positions[end_idx]
@@ -363,25 +343,22 @@ class ChessPilot:
         start_x, start_y = start_pos
         end_x, end_y = end_pos
 
-        # Move the piece (click on start and end positions)
         if is_wayland():
             client = WaylandInput()
-            client.click(int(start_x), int(start_y), 0x110) # Click start position
-            time.sleep(0.3)
-            client.click(int(end_x), int(end_y), 0x110)  # Click end position
+            client.click(int(start_x), int(start_y), 0x110)
+            time.sleep(self.screenshot_delay_var.get())
+            client.click(int(end_x), int(end_y), 0x110)
         else:
             pyautogui.click(start_x, start_y)
             self.last_automated_click_time = time.time()
-            time.sleep(0.25)
+            time.sleep(self.screenshot_delay_var.get())
             pyautogui.click(end_x, end_y)
             self.last_automated_click_time = time.time()
 
-        # Move the cursor back to the button if auto mode is off
         if not self.auto_mode_var.get():
             self.root.after(0, self.move_cursor_to_button)
 
     def expand_fen_row(self, row):
-        """Expands a FEN row string by replacing digits with that many spaces."""
         expanded = ""
         for char in row:
             if char.isdigit():
@@ -391,14 +368,9 @@ class ChessPilot:
         return expanded
 
     def is_castling_possible(self, fen, color, side):
-        """
-        Checks if the king and the corresponding rook are in their original positions
-        based on the FEN's piece placement. Returns True if castling is physically possible.
-        """
         board = fen.split()[0]
         rows = board.split('/')
         if color == "w":
-            # For white, the king should be on e1.
             last_row = self.expand_fen_row(rows[-1])
             if len(last_row) != 8 or last_row[4] != 'K':
                 return False
@@ -407,7 +379,6 @@ class ChessPilot:
             elif side == 'queenside':
                 return last_row[0] == 'R'
         else:
-            # For black, the king should be on e8.
             first_row = self.expand_fen_row(rows[0])
             if len(first_row) != 8 or first_row[4] != 'k':
                 return False
@@ -418,25 +389,14 @@ class ChessPilot:
         return False
 
     def update_fen_castling_rights(self, fen):
-        """
-        Updates the castling availability field of the FEN.
-        For each side (white and black), if castling is physically possible and (for the player's side)
-        the corresponding checkbox is ticked, the right is added.
-        Otherwise, only the opponent's rights (if any) are taken from the board.
-        If no rights are available, a '-' is used.
-        """
         fields = fen.split()
-        # fields[0]: board, fields[1]: active color, fields[2]: current castling rights, etc.
-        # Recalculate castling rights:
         white_castling = ""
-        # White kingside:
         if self.is_castling_possible(fen, "w", "kingside"):
             if self.color_indicator == "w":
                 if self.kingside_var.get():
                     white_castling += "K"
             else:
                 white_castling += "K"
-        # White queenside:
         if self.is_castling_possible(fen, "w", "queenside"):
             if self.color_indicator == "w":
                 if self.queenside_var.get():
@@ -445,14 +405,12 @@ class ChessPilot:
                 white_castling += "Q"
 
         black_castling = ""
-        # Black kingside:
         if self.is_castling_possible(fen, "b", "kingside"):
             if self.color_indicator == "b":
                 if self.kingside_var.get():
                     black_castling += "k"
             else:
                 black_castling += "k"
-        # Black queenside:
         if self.is_castling_possible(fen, "b", "queenside"):
             if self.color_indicator == "b":
                 if self.queenside_var.get():
@@ -501,7 +459,6 @@ class ChessPilot:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
 
-            # Special castling handling
             castling_moves = {"e1g1", "e1c1", "e8g8", "e8c8"}
             if best_move in castling_moves:
                 side = 'kingside' if best_move in {"e1g1", "e8g8"} else 'queenside'
@@ -514,9 +471,12 @@ class ChessPilot:
                             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
                             self.auto_mode_var.set(False)
                         self.root.after(0, lambda: self.update_status(status_msg))
-                        time.sleep(0.4)
+                        time.sleep(self.screenshot_delay_var.get())
+                        fen_after = self.get_current_fen()
+                        if fen_after:
+                            self.last_fen = fen_after.split()[0]
             else:
-                self.execute_normal_move(best_move, mate_flag, updated_fen)
+                self.execute_normal_move(best_move, mate_flag)
 
         except Exception as e:
             self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
@@ -537,117 +497,61 @@ class ChessPilot:
                 pos_y = y + row * size + (size // 2)
                 self.board_positions[(col, row)] = (pos_x, pos_y)
 
-    def execute_normal_move(self, move, mate_flag, expected_fen):
+    def execute_normal_move(self, move, mate_flag):
         self.move_piece(move, self.board_positions)
-        status_msg = f"Best Move: {move}\n Move Played: {move}"
+        status_msg = f"Best Move: {move}\nMove Played: {move}"
         if mate_flag:
             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
             self.auto_mode_var.set(False)
         self.root.after(0, lambda: self.update_status(status_msg))
-        
-        success, attempts = self.verify_move(move, expected_fen)
-        if not success:
-            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
-            self.auto_mode_var.set(False)
+        time.sleep(self.screenshot_delay_var.get())
+        fen_after = self.get_current_fen()
+        if fen_after:
+            self.last_fen = fen_after.split()[0]
 
-    def verify_move(self, move, expected_fen):
-        attempts = 0
-        max_attempts = 3
-        expected_pieces = expected_fen.split()[0]
-        
-        while attempts < max_attempts:
-            time.sleep(0.4)
-            screenshot = self.capture_screenshot_in_memory()
-            if not screenshot:
-                break
-
-            boxes = get_positions(screenshot)
-            if not boxes:
-                attempts += 1
-                continue
-
-            try:
-                _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
-                fen_parts = current_fen.split()
-                
-                # Success conditions:
-                # 1. Active color changed to opponent's turn
-                # 2. Pieces match expected FEN
-                # 3. At least 1 second has passed since move
-                if len(fen_parts) > 1 and fen_parts[1] != self.color_indicator:
-                    self.last_fen = fen_parts[0]
-                    return True, attempts
-                
-                if fen_parts[0] == expected_pieces:
-                    self.last_fen = fen_parts[0]
-                    return True, attempts
-
-            except ValueError:
-                pass
-
-            attempts += 1
-            self.root.after(0, lambda a=attempts: 
-                          self.update_status(f"Verifying... ({a}/{max_attempts})"))
-            self.move_piece(move, self.board_positions)
-
-        return False, attempts
-    
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
         
     def toggle_auto_mode(self):
         if self.auto_mode_var.get():
-            # Disable the manual play button.
             self.btn_play.config(state=tk.DISABLED)
-            # Trigger an initial move to set cropping parameters.
             self.process_move_thread()
-            # Start auto loop in a new thread.
             threading.Thread(target=self.auto_move_loop, daemon=True).start()
         else:
-            # Auto mode turned off; re-enable manual button.
             self.btn_play.config(state=tk.NORMAL)
 
     def auto_move_loop(self):
-        """Enhanced auto mode with turn detection and FEN stability checks"""
+        """Waits for the board FEN to change before analyzing and playing the next move."""
         while self.auto_mode_var.get():
             if self.processing_move or not self.board_positions:
                 time.sleep(0.5)
                 continue
-
             try:
                 screenshot = self.capture_screenshot_in_memory()
                 if not screenshot:
                     continue
-
                 boxes = get_positions(screenshot)
                 if not boxes:
                     continue
-
                 _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
                 fen_parts = current_fen.split()
                 if len(fen_parts) < 2:
                     continue
-
                 current_pieces = fen_parts[0]
                 active_color = fen_parts[1]
-
-                # Only act if it's our turn and board state changed
+                # When it's our turn and the board has changed from our stored FEN, play the move.
                 if active_color == self.color_indicator and current_pieces != self.last_fen:
-                    # Confirm FEN stability after short delay
-                    time.sleep(0.5)
+                    time.sleep(self.screenshot_delay_var.get())
                     confirm_fen = self.get_current_fen()
                     if confirm_fen and confirm_fen.split()[0] == current_pieces:
                         self.last_fen = current_pieces
                         self.process_move_thread()
-                        # Extra pause to allow opponent's move
-                        time.sleep(0.4)
-
+                        time.sleep(self.screenshot_delay_var.get())
             except Exception as e:
                 self.root.after(0, lambda e=e: self.update_status(f"Error: {str(e)}"))
                 self.auto_mode_var.set(False)
 
     def get_current_fen(self):
-        """Helper to get current FEN with error handling"""
         try:
             screenshot = self.capture_screenshot_in_memory()
             boxes = get_positions(screenshot)
