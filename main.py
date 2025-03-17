@@ -345,14 +345,11 @@ class ChessPilot:
 
         if is_wayland():
             client = WaylandInput()
-            client.click(int(start_x), int(start_y), 0x110)
-            time.sleep(self.screenshot_delay_var.get())
-            client.click(int(end_x), int(end_y), 0x110)
+            client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.01)
         else:
-            pyautogui.click(start_x, start_y)
-            self.last_automated_click_time = time.time()
-            time.sleep(self.screenshot_delay_var.get())
-            pyautogui.click(end_x, end_y)
+            pyautogui.mouseDown(start_x, start_y)
+            pyautogui.moveTo(end_x, end_y)
+            pyautogui.mouseUp(end_x, end_y)
             self.last_automated_click_time = time.time()
 
         if not self.auto_mode_var.get():
