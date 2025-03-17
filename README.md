@@ -34,7 +34,6 @@ Ensure the following software is installed:
 
 - **Python 3.10+**
 - **Python Libraries**:
-  - `requests` (`pip install requests`)
   - `mss` (`pip install mss`)
   - `Pillow` (`pip install Pillow`)
   - `pyautogui` (`pip install pyautogui`)
