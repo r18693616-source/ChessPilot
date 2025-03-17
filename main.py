@@ -345,7 +345,7 @@ class ChessPilot:
 
         if is_wayland():
             client = WaylandInput()
-            client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.01)
+            client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.001)
         else:
             pyautogui.mouseDown(start_x, start_y)
             pyautogui.moveTo(end_x, end_y)
@@ -473,7 +473,7 @@ class ChessPilot:
                         if fen_after:
                             self.last_fen = fen_after.split()[0]
             else:
-                self.execute_normal_move(best_move, mate_flag)
+                self.execute_normal_move(best_move, mate_flag, updated_fen)
 
         except Exception as e:
             self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
@@ -494,17 +494,39 @@ class ChessPilot:
                 pos_y = y + row * size + (size // 2)
                 self.board_positions[(col, row)] = (pos_x, pos_y)
 
-    def execute_normal_move(self, move, mate_flag):
+    def execute_normal_move(self, move, mate_flag, expected_fen):
         self.move_piece(move, self.board_positions)
         status_msg = f"Best Move: {move}\nMove Played: {move}"
         if mate_flag:
             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
             self.auto_mode_var.set(False)
         self.root.after(0, lambda: self.update_status(status_msg))
-        time.sleep(self.screenshot_delay_var.get())
-        fen_after = self.get_current_fen()
-        if fen_after:
-            self.last_fen = fen_after.split()[0]
+        time.sleep(0.05)
+        success, attempts = self.verify_move(move, expected_fen)
+        if not success:
+            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
+            self.auto_mode_var.set(False)
+
+    def verify_move(self, move, expected_fen):
+        expected_pieces = expected_fen.split()[0]
+        screenshot = self.capture_screenshot_in_memory()
+        if not screenshot:
+            return False, 0
+        boxes = get_positions(screenshot)
+        if not boxes:
+            return False, 0
+        try:
+            _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
+            fen_parts = current_fen.split()
+            if len(fen_parts) > 1 and fen_parts[1] != self.color_indicator:
+                self.last_fen = fen_parts[0]
+                return True, 1
+            if fen_parts[0] == expected_pieces:
+                self.last_fen = fen_parts[0]
+                return True, 1
+        except ValueError:
+            pass
+        return False, 1
 
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
