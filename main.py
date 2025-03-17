@@ -131,7 +131,7 @@ class ChessPilot:
                                     font=('Segoe UI', 9), bg=self.frame_color, fg=self.text_color)
         self.depth_label.pack()
 
-        tk.Label(depth_panel, text="Auto Move Screenshot Delay (sec):", font=('Segoe UI', 10),
+        tk.Label(depth_panel, text="\nAuto Move Screenshot Delay (sec):", font=('Segoe UI', 10),
                  bg=self.frame_color, fg=self.text_color).pack(anchor='w')
         self.delay_spinbox = tk.Spinbox(depth_panel, from_=0.0, to=1.0, increment=0.1,
                                         textvariable=self.screenshot_delay_var, format="%.1f", width=5,
