@@ -3,7 +3,7 @@ import socket
 import struct
 import sys
 import time
-from .screen_resulation import get_resolution
+from .screen_resolution import get_resolution
 
 logging = False
 
