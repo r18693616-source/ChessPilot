@@ -325,7 +325,7 @@ class ChessPilot:
             else:
                 pyautogui.moveTo(center_x, center_y, duration=0.1)
         except Exception as e:
-            print(f"Error moving cursor: {e}")
+            self.root.after(0, lambda: messagebox.showerror("Error", "Could not relocate the mouse"))
             self.auto_mode_var.set(False)
 
     def move_piece(self, move, board_positions):
@@ -343,14 +343,19 @@ class ChessPilot:
         start_x, start_y = start_pos
         end_x, end_y = end_pos
 
-        if is_wayland():
-            client = WaylandInput()
-            client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.001)
-        else:
-            pyautogui.mouseDown(start_x, start_y)
-            pyautogui.moveTo(end_x, end_y)
-            pyautogui.mouseUp(end_x, end_y)
-            self.last_automated_click_time = time.time()
+        try:
+            if is_wayland():
+                client = WaylandInput()
+                client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.001)
+            else:
+                pyautogui.mouseDown(start_x, start_y)
+                pyautogui.moveTo(end_x, end_y)
+                pyautogui.mouseUp(end_x, end_y)
+                self.last_automated_click_time = time.time()
+        except Exception as e:
+            self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to move piece: {str(e)}"))
+            self.auto_mode_var.set(False)
+            return
 
         if not self.auto_mode_var.get():
             self.root.after(0, self.move_cursor_to_button)
