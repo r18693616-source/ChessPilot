@@ -468,10 +468,28 @@ class ChessPilot:
                             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
                             self.auto_mode_var.set(False)
                         self.root.after(0, lambda: self.update_status(status_msg))
-                        time.sleep(self.screenshot_delay_var.get())
-                        fen_after = self.get_current_fen()
-                        if fen_after:
-                            self.last_fen = fen_after.split()[0]
+
+                        time.sleep(0.3)
+                        
+                        if mate_flag:
+                            # For checkmate, verify once before updating.
+                            success, _ = self.verify_move(best_move, updated_fen)
+                            if not success:
+                                self.root.after(0, lambda: self.update_status(f"Move verification failed on checkmate move\nBest Move: {best_move}"))
+                            else:
+                                fen_after = self.get_current_fen()
+                                if fen_after:
+                                    self.last_fen = fen_after.split()[0]
+                            self.auto_mode_var.set(False)
+                        else:
+                            success, _ = self.verify_move(best_move, updated_fen)
+                            if not success:
+                                self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {best_move}"))
+                                self.auto_mode_var.set(False)
+                            else:
+                                fen_after = self.get_current_fen()
+                                if fen_after:
+                                    self.last_fen = fen_after.split()[0]
             else:
                 self.execute_normal_move(best_move, mate_flag, updated_fen)
 
@@ -502,31 +520,44 @@ class ChessPilot:
             self.auto_mode_var.set(False)
         self.root.after(0, lambda: self.update_status(status_msg))
         time.sleep(0.05)
-        success, attempts = self.verify_move(move, expected_fen)
+        
+        if mate_flag:
+            # For checkmate moves, verify only once.
+            success, _ = self.verify_move(move, expected_fen)
+            if not success:
+                self.root.after(0, lambda: self.update_status(f"Failed to checkmate\nCheckmate Move: {move}"))
+            return
+        
+        success, _ = self.verify_move(move, expected_fen)
         if not success:
             self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
             self.auto_mode_var.set(False)
 
-    def verify_move(self, move, expected_fen):
+
+    def verify_move(self, _, expected_fen, attempts_limit=3):
         expected_pieces = expected_fen.split()[0]
-        screenshot = self.capture_screenshot_in_memory()
-        if not screenshot:
-            return False, 0
-        boxes = get_positions(screenshot)
-        if not boxes:
-            return False, 0
-        try:
-            _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
-            fen_parts = current_fen.split()
-            if len(fen_parts) > 1 and fen_parts[1] != self.color_indicator:
-                self.last_fen = fen_parts[0]
-                return True, 1
-            if fen_parts[0] == expected_pieces:
-                self.last_fen = fen_parts[0]
-                return True, 1
-        except ValueError:
-            pass
-        return False, 1
+        for attempt in range(1, attempts_limit + 1):
+            if attempt > 1:
+                time.sleep(0.2)
+            screenshot = self.capture_screenshot_in_memory()
+            if not screenshot:
+                continue
+            boxes = get_positions(screenshot)
+            if not boxes:
+                continue
+            try:
+                _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
+                fen_parts = current_fen.split()
+                # If the active color changed, update last FEN and return.
+                if len(fen_parts) > 1 and fen_parts[1] != self.color_indicator:
+                    self.last_fen = fen_parts[0]
+                    return True, attempt
+                if fen_parts[0] == expected_pieces:
+                    self.last_fen = fen_parts[0]
+                    return True, attempt
+            except ValueError:
+                pass
+        return False, attempts_limit
 
     def process_move_thread(self):
         threading.Thread(target=self.process_move, daemon=True).start()
