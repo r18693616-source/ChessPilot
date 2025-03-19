@@ -232,7 +232,7 @@ class ChessPilot:
                     image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
             return image
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Screenshot failed: {e}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Screenshot failed: {err}"))
             self.auto_mode_var.set(False)
             return None
         
@@ -289,7 +289,7 @@ class ChessPilot:
             return best_move, updated_fen, mate_flag
 
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Stockfish error: {e}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Stockfish error: {err}"))
             self.auto_mode_var.set(False)
             return None, None, False
 
@@ -325,7 +325,7 @@ class ChessPilot:
             else:
                 pyautogui.moveTo(center_x, center_y, duration=0.1)
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", "Could not relocate the mouse"))
+            self.root.after(0, lambda err=e: messagebox.showerror(f"Error", f"Could not relocate the mouse\n{err}"))
             self.auto_mode_var.set(False)
 
     def move_piece(self, move, board_positions):
@@ -353,7 +353,7 @@ class ChessPilot:
                 pyautogui.mouseUp(end_x, end_y)
                 self.last_automated_click_time = time.time()
         except Exception as e:
-            self.root.after(0, lambda: messagebox.showerror("Error", f"Failed to move piece: {str(e)}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Failed to move piece: {err}"))
             self.auto_mode_var.set(False)
             return
 
@@ -425,6 +425,27 @@ class ChessPilot:
             new_castling = "-"
         fields[2] = new_castling
         return " ".join(fields)
+    
+    def execute_normal_move(self, move, mate_flag, expected_fen):
+        self.move_piece(move, self.board_positions)
+        status_msg = f"Best Move: {move}\nMove Played: {move}"
+        if mate_flag:
+            status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
+            self.auto_mode_var.set(False)
+        self.root.after(0, lambda: self.update_status(status_msg))
+        time.sleep(0.05)
+        
+        if mate_flag:
+            # For checkmate moves, verify only once.
+            success, _ = self.verify_move(move, expected_fen)
+            if not success:
+                self.root.after(0, lambda: self.update_status(f"Failed to checkmate\nCheckmate Move: {move}"))
+            return
+        
+        success, _ = self.verify_move(move, expected_fen)
+        if not success:
+            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
+            self.auto_mode_var.set(False)
 
     def process_move(self):
         if self.processing_move:
@@ -516,28 +537,6 @@ class ChessPilot:
                 pos_x = x + col * size + (size // 2)
                 pos_y = y + row * size + (size // 2)
                 self.board_positions[(col, row)] = (pos_x, pos_y)
-
-    def execute_normal_move(self, move, mate_flag, expected_fen):
-        self.move_piece(move, self.board_positions)
-        status_msg = f"Best Move: {move}\nMove Played: {move}"
-        if mate_flag:
-            status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
-            self.auto_mode_var.set(False)
-        self.root.after(0, lambda: self.update_status(status_msg))
-        time.sleep(0.05)
-        
-        if mate_flag:
-            # For checkmate moves, verify only once.
-            success, _ = self.verify_move(move, expected_fen)
-            if not success:
-                self.root.after(0, lambda: self.update_status(f"Failed to checkmate\nCheckmate Move: {move}"))
-            return
-        
-        success, _ = self.verify_move(move, expected_fen)
-        if not success:
-            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
-            self.auto_mode_var.set(False)
-
 
     def verify_move(self, _, expected_fen, attempts_limit=3):
         expected_pieces = expected_fen.split()[0]
