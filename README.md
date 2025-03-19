@@ -17,7 +17,7 @@
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.
 - **New Feature – Castling Support**: Users can now indicate castling rights via a tick mark before each move.
 - **New Feature – Depth Slider**: Users can now choose the depth for Stockfish's analysis via a slider. **Note**: More depth means longer processing time. The default depth is set to 15, which is recommended for a good balance between speed and accuracy.
-- **New Feature – Retry Mechanism**: If the piece doesn’t move as expected, the tool will automatically retry the move up to **3 times**—displaying messages such as “Piece didn't move, retrying (1/3)”—to ensure the move is successfully executed.
+- **New Feature – Retry Mechanism**: If the piece doesn’t move as expected, the tool will automatically retry the move up to **3 times** —to ensure the move is successfully executed.
 - **Optimized Performance**: The removal of external APIs results in lower latency and improved move execution speed.
 
 ---
