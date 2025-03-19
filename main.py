@@ -58,7 +58,6 @@ class ChessPilot:
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
         self.color_indicator = None
-        self.last_automated_click_time = 0
         self.last_fen = ""
         self.depth_var = tk.IntVar(value=15)
         self.auto_mode_var = tk.BooleanVar(value=False)
@@ -357,7 +356,6 @@ class ChessPilot:
                 pyautogui.mouseDown(start_x, start_y)
                 pyautogui.moveTo(end_x, end_y)
                 pyautogui.mouseUp(end_x, end_y)
-                self.last_automated_click_time = time.time()
         except Exception as e:
             self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Failed to move piece: {str(err)}"))
             self.auto_mode_var.set(False)
