@@ -31,12 +31,10 @@ def get_binary_path(binary):
         sys.exit(1)
     return path
 
-# Get paths for each binary
-grim_path        = get_binary_path("grim")
-
 if is_wayland():
     import io
     from input_capture import WaylandInput
+    grim_path = get_binary_path("grim")
 else:
     import mss
     import mss.tools
