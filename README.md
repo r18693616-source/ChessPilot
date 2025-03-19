@@ -26,6 +26,12 @@
 
 Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/ChessPilot/releases/latest/).
 
+**Important Note:**  
+Even if you download ChessPilot from the releases, **you must download Stockfish separately**. The Stockfish binary is intentionally excluded from the release due to CPU instruction set incompatibility on different machines. Please download the appropriate Stockfish version from the [official Stockfish website](https://stockfishchess.org/download/), rename it as needed (e.g., `stockfish.exe` for Windows), and place the file inside the `ChessPilot` directory (the same directory as `main.py`).
+
+- **For Linux Users:**  
+  You can install Stockfish via your package manager (e.g., `sudo apt install stockfish` on Debian/Ubuntu, `paru/yay -S stockfish` on Arch Linux, or `sudo dnf install stockfish` on Fedora) or download it directly from the [official Stockfish website](https://stockfishchess.org/download/). After installation or download, rename the binary as needed (e.g., `stockfish`) and place it inside the `ChessPilot` directory.
+
 ---
 
 ## Prerequisites
@@ -38,6 +44,7 @@ Ensure the following software is installed:
   - `Pillow` (`pip install Pillow`)
   - `pyautogui` (`pip install pyautogui`)
   - `onnxruntime` (`pip install onnxruntime`)
+  - `numpy` (`pip install numpy`)
   - `tkinter` (usually pre-installed with Python)
 - **Stockfish Chess Engine**: [Download here](https://stockfishchess.org/)
 
