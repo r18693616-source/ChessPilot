@@ -32,7 +32,6 @@ def get_binary_path(binary):
     return path
 
 # Get paths for each binary
-stockfish_path   = get_binary_path("stockfish")
 grim_path        = get_binary_path("grim")
 
 if is_wayland():
@@ -243,9 +242,20 @@ class ChessPilot:
         
     def get_best_move(self, fen):
         try:
+            # Determine the Stockfish engine executable path based on the OS.
+            if os.name == "nt":
+                stockfish_path = "stockfish.exe"
+            else:
+                # Try to locate stockfish in PATH
+                stockfish_path = "stockfish"
+                if shutil.which(stockfish_path) is None:
+                    # Fall back to the executable in the current directory
+                    stockfish_path = "./stockfish"
+
             flags = 0
             if os.name == "nt":
                 flags = subprocess.CREATE_NO_WINDOW
+
             stockfish = subprocess.Popen(
                 [stockfish_path],
                 stdin=subprocess.PIPE,
@@ -290,7 +300,7 @@ class ChessPilot:
             stockfish.stdin.write("quit\n")
             stockfish.stdin.flush()
             stockfish.wait()
-            
+
             return best_move, updated_fen, mate_flag
 
         except Exception as e:
