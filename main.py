@@ -12,22 +12,28 @@ from boardreader import get_fen_from_position, get_positions
 def is_wayland():
     return os.getenv("XDG_SESSION_TYPE") == "wayland"
 
-def get_stockfish_path():
+def get_binary_path(binary):
+    # For Windows, ensure the binary name ends with '.exe'
+    if os.name == "nt" and not binary.endswith(".exe"):
+        binary += ".exe"
+        
     if getattr(sys, 'frozen', False):
-        path = os.path.join(sys._MEIPASS, "stockfish.exe" if os.name == "nt" else "stockfish")
+        # When bundled with PyInstaller, binaries should be in the _MEIPASS folder
+        path = os.path.join(sys._MEIPASS, binary)
     else:
-        if os.name == "nt":
-            path = "stockfish.exe"
-        else:
-            path = shutil.which("stockfish")
-            if path is None:
-                path = "stockfish"
+        # Check for binary in system PATH on non-frozen mode
+        path = shutil.which(binary)
+        if path is None:
+            path = binary
+
     if not (path and os.path.exists(path)):
-        messagebox.showerror("Error", "Stockfish is missing! Make sure it's bundled properly.")
+        messagebox.showerror("Error", f"{binary} is missing! Make sure it's bundled properly.")
         sys.exit(1)
     return path
 
-stockfish_path = get_stockfish_path()
+# Get paths for each binary
+stockfish_path   = get_binary_path("stockfish")
+grim_path        = get_binary_path("grim")
 
 if is_wayland():
     import io
@@ -223,7 +229,7 @@ class ChessPilot:
     def capture_screenshot_in_memory(self):
         try:
             if is_wayland():
-                result = subprocess.run(["grim", "-"], stdout=subprocess.PIPE, check=True)
+                result = subprocess.run([grim_path, "-"], stdout=subprocess.PIPE, check=True)
                 image = Image.open(io.BytesIO(result.stdout))
             else:
                 with mss.mss() as sct:
@@ -232,7 +238,7 @@ class ChessPilot:
                     image = Image.frombytes("RGB", sct_img.size, sct_img.rgb)
             return image
         except Exception as e:
-            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Screenshot failed: {err}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Screenshot failed: {str(err)}"))
             self.auto_mode_var.set(False)
             return None
         
@@ -289,7 +295,7 @@ class ChessPilot:
             return best_move, updated_fen, mate_flag
 
         except Exception as e:
-            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Stockfish error: {err}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Stockfish error: {str(err)}"))
             self.auto_mode_var.set(False)
             return None, None, False
 
@@ -325,7 +331,7 @@ class ChessPilot:
             else:
                 pyautogui.moveTo(center_x, center_y, duration=0.1)
         except Exception as e:
-            self.root.after(0, lambda err=e: messagebox.showerror(f"Error", f"Could not relocate the mouse\n{err}"))
+            self.root.after(0, lambda err=e: messagebox.showerror(f"Error", f"Could not relocate the mouse\n{str(err)}"))
             self.auto_mode_var.set(False)
 
     def move_piece(self, move, board_positions):
@@ -353,7 +359,7 @@ class ChessPilot:
                 pyautogui.mouseUp(end_x, end_y)
                 self.last_automated_click_time = time.time()
         except Exception as e:
-            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Failed to move piece: {err}"))
+            self.root.after(0, lambda err=e: messagebox.showerror("Error", f"Failed to move piece: {str(err)}"))
             self.auto_mode_var.set(False)
             return
 
@@ -470,7 +476,7 @@ class ChessPilot:
                     self.color_indicator, boxes
                 )
             except ValueError as e:
-                self.root.after(0, lambda: self.update_status(f"Error: {e}"))
+                self.root.after(0, lambda err=e: self.update_status(f"Error: {str(err)}"))
                 self.auto_mode_var.set(False)
                 return
 
@@ -520,7 +526,7 @@ class ChessPilot:
                 self.execute_normal_move(best_move, mate_flag, updated_fen)
 
         except Exception as e:
-            self.root.after(0, lambda: self.update_status(f"Error: {str(e)}"))
+            self.root.after(0, lambda err=e: self.update_status(f"Error: {str(err)}"))
             self.auto_mode_var.set(False)
         finally:
             self.processing_move = False
@@ -602,7 +608,7 @@ class ChessPilot:
                         self.process_move_thread()
                         time.sleep(self.screenshot_delay_var.get())
             except Exception as e:
-                self.root.after(0, lambda e=e: self.update_status(f"Error: {str(e)}"))
+                self.root.after(0, lambda err=e: self.update_status(f"Error: {str(err)}"))
                 self.auto_mode_var.set(False)
 
     def get_current_fen(self):
