@@ -56,6 +56,7 @@ class ChessPilot:
         self.root.attributes('-topmost', True)
         self.color_indicator = None
         self.last_fen = ""
+        self.last_fen_by_color = {'w': '', 'b': ''}
         self.depth_var = tk.IntVar(value=15)
         self.auto_mode_var = tk.BooleanVar(value=False)
         self.board_positions = {}
@@ -209,6 +210,16 @@ class ChessPilot:
         ttk.Checkbutton(self.castling_frame, text="Queenside Castle",
                         variable=self.queenside_var, style="Castling.TCheckbutton"
                         ).grid(row=1, column=0, padx=10, sticky='w')
+        
+    def update_last_fen_for_color(self, fen: str):
+        """
+        Split the full FEN into its piece‐placement (parts[0]) and active‐color (parts[1]),
+        then store the placement under that color.
+        """
+        parts = fen.split()
+        placement, active_color = parts[0], parts[1]
+        self.last_fen_by_color[active_color] = placement
+
 
     def set_color(self, color):
         self.color_indicator = color
@@ -441,6 +452,11 @@ class ChessPilot:
     def execute_normal_move(self, move, mate_flag, expected_fen):
         self.move_piece(move, self.board_positions)
         status_msg = f"Best Move: {move}\nMove Played: {move}"
+        
+        fen_after = self.get_current_fen()
+        if fen_after:
+            self.update_last_fen_for_color(fen_after)
+            
         if mate_flag:
             status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
             self.auto_mode_var.set(False)
@@ -490,6 +506,7 @@ class ChessPilot:
             self.store_board_positions(chessboard_x, chessboard_y, square_size)
 
             best_move, updated_fen, mate_flag = self.get_best_move(fen)
+            self.update_last_fen_for_color(updated_fen)
             if not best_move:
                 self.root.after(0, lambda: self.update_status("No valid move found!"))
                 return
@@ -587,35 +604,54 @@ class ChessPilot:
             self.btn_play.config(state=tk.NORMAL)
 
     def auto_move_loop(self):
-        """Waits for the board FEN to change before analyzing and playing the next move."""
+        """Waits for the opponent's FEN to change, then plays our move."""
+        opp_color = 'b' if self.color_indicator == 'w' else 'w'
+
         while self.auto_mode_var.get():
             if self.processing_move or not self.board_positions:
                 time.sleep(0.5)
                 continue
+
             try:
                 screenshot = self.capture_screenshot_in_memory()
                 if not screenshot:
+                    time.sleep(0.2)
                     continue
+
                 boxes = get_positions(screenshot)
                 if not boxes:
+                    time.sleep(0.2)
                     continue
+
+                # Read the new FEN
                 _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
-                fen_parts = current_fen.split()
-                if len(fen_parts) < 2:
+                parts = current_fen.split()
+                if len(parts) < 2:
+                    time.sleep(0.2)
                     continue
-                current_pieces = fen_parts[0]
-                active_color = fen_parts[1]
-                # When it's our turn and the board has changed from our stored FEN, play the move.
-                if active_color == self.color_indicator and current_pieces != self.last_fen:
-                    time.sleep(self.screenshot_delay_var.get())
-                    confirm_fen = self.get_current_fen()
-                    if confirm_fen and confirm_fen.split()[0] == current_pieces:
-                        self.last_fen = current_pieces
-                        self.process_move_thread()
-                        time.sleep(self.screenshot_delay_var.get())
+
+                placement, active = parts[0], parts[1]
+
+                if active == opp_color:
+                    if placement != self.last_fen_by_color.get(opp_color, ''):
+                        self.last_fen_by_color[opp_color] = placement
+                    time.sleep(0.2)
+                    continue
+
+                if active == self.color_indicator and placement == self.last_fen_by_color.get(opp_color, ''):
+                    # No new opponent move yet
+                    time.sleep(0.2)
+                    continue
+
+                self.last_fen_by_color[opp_color] = placement
+                time.sleep(self.screenshot_delay_var.get())
+                self.process_move_thread()
+                time.sleep(self.screenshot_delay_var.get())
+
             except Exception as e:
                 self.root.after(0, lambda err=e: self.update_status(f"Error: {str(err)}"))
                 self.auto_mode_var.set(False)
+                break
 
     def get_current_fen(self):
         try:
