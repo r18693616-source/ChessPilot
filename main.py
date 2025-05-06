@@ -449,20 +449,69 @@ class ChessPilot:
         fields[2] = new_castling
         return " ".join(fields)
     
+    def did_my_piece_move(self, before_fen: str, after_fen: str, move: str) -> bool:
+        """
+        Return True iff the only change between before_fen and after_fen
+        is that *your* piece moved from move[0:2] → move[2:4].
+        """
+        # Expand a single FEN row like "3P4" → [' ', ' ', ' ', 'P', ' ', ' ', ' ', ' ']
+        def expand_row(row):
+            out = []
+            for ch in row:
+                if ch.isdigit():
+                    out += [' '] * int(ch)
+                else:
+                    out.append(ch)
+            return out
+
+        # Turn the placement part into a flat 64-list
+        def fen_to_list(fen):
+            rows = fen.split()[0].split('/')
+            flat = []
+            for r in rows:
+                flat += expand_row(r)
+            return flat  # len=64
+
+        before_list = fen_to_list(before_fen)
+        after_list  = fen_to_list(after_fen)
+
+        # Map algebraic ("e2") → flat index (0=a8 → 63=h1)
+        def algebraic_to_index(sq):
+            file = ord(sq[0]) - ord('a')         # 0..7
+            rank = 8 - int(sq[1])               # '1'→7 down to '8'→0
+            return rank * 8 + file
+
+        start_i = algebraic_to_index(move[0:2])
+        end_i   = algebraic_to_index(move[2:4])
+
+        my_pieces = 'PNBRQK' if self.color_indicator == 'w' else 'pnbrqk'
+
+        moved_from   = before_list[start_i] in my_pieces and after_list[start_i] == ' '
+        moved_to     = after_list[end_i]   in my_pieces and before_list[end_i] == ' '
+        #—and everything else stayed identical:
+        unchanged_elsewhere = all(
+            (b == a) or idx in (start_i, end_i)
+            for idx, (b, a) in enumerate(zip(before_list, after_list))
+        )
+
+        return moved_from and moved_to and unchanged_elsewhere
+    
     def execute_normal_move(self, move, mate_flag, expected_fen):
         """
-        Try to execute Stockfish's best move up to 3 times, 
-        but only consider it a success if the board matches expected_fen.
+        Try up to 3 times to drag your piece; only succeed
+        if did_my_piece_move(before_fen, current_fen, move) is True.
         """
-        expected_pieces = expected_fen.split()[0]
+        
         max_retries = 3
 
         for attempt in range(1, max_retries + 1):
+            original_fen = self.get_current_fen()
+            if not original_fen:
+                time.sleep(0.1)
+                continue
 
-            # map notation → on-screen coords
             start_idx, end_idx = self.chess_notation_to_index(move)
             if start_idx is None or end_idx is None:
-                print("  ✖ Invalid notation, retrying…")
                 time.sleep(0.1)
                 continue
 
@@ -473,11 +522,9 @@ class ChessPilot:
                 time.sleep(0.1)
                 continue
 
-            # drag the piece
             self.move_piece(move, self.board_positions)
             time.sleep(0.1)
 
-            # fresh screenshot → FEN
             img = self.capture_screenshot_in_memory()
             if not img:
                 continue
@@ -487,21 +534,19 @@ class ChessPilot:
 
             try:
                 _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
-                current_pieces = current_fen.split()[0]
             except ValueError as e:
                 continue
 
-            # only accept it if we exactly match what Stockfish predicted
-            if current_pieces == expected_pieces:
-                self.last_fen = current_pieces
-                status  = f"Best Move: {move}\nMove Played: {move}"
+            if self.did_my_piece_move(original_fen, current_fen, move):
+                self.last_fen = current_fen.split()[0]
+                status = f"Best Move: {move}\nMove Played: {move}"
                 if mate_flag:
                     status += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
                     self.auto_mode_var.set(False)
                 self.update_status(status)
                 return True
 
-        # all retries exhausted
+
         self.update_status(f"Move failed to register after {max_retries} attempts")
         self.auto_mode_var.set(False)
         return False
