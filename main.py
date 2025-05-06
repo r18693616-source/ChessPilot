@@ -450,30 +450,61 @@ class ChessPilot:
         return " ".join(fields)
     
     def execute_normal_move(self, move, mate_flag, expected_fen):
-        self.move_piece(move, self.board_positions)
-        status_msg = f"Best Move: {move}\nMove Played: {move}"
-        
-        fen_after = self.get_current_fen()
-        if fen_after:
-            self.update_last_fen_for_color(fen_after)
-            
-        if mate_flag:
-            status_msg += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
-            self.auto_mode_var.set(False)
-        self.root.after(0, lambda: self.update_status(status_msg))
-        time.sleep(0.05)
-        
-        if mate_flag:
-            # For checkmate moves, verify only once.
-            success, _ = self.verify_move(move, expected_fen)
-            if not success:
-                self.root.after(0, lambda: self.update_status(f"Failed to checkmate\nCheckmate Move: {move}"))
-            return
-        
-        success, _ = self.verify_move(move, expected_fen)
-        if not success:
-            self.root.after(0, lambda: self.update_status(f"Move verification failed\nBest Move: {move}"))
-            self.auto_mode_var.set(False)
+        """
+        Try to execute Stockfish's best move up to 3 times, 
+        but only consider it a success if the board matches expected_fen.
+        """
+        expected_pieces = expected_fen.split()[0]
+        max_retries = 3
+
+        for attempt in range(1, max_retries + 1):
+
+            # map notation → on-screen coords
+            start_idx, end_idx = self.chess_notation_to_index(move)
+            if start_idx is None or end_idx is None:
+                print("  ✖ Invalid notation, retrying…")
+                time.sleep(0.1)
+                continue
+
+            try:
+                start_pos = self.board_positions[start_idx]
+                end_pos   = self.board_positions[end_idx]
+            except KeyError:
+                time.sleep(0.1)
+                continue
+
+            # drag the piece
+            self.move_piece(move, self.board_positions)
+            time.sleep(0.1)
+
+            # fresh screenshot → FEN
+            img = self.capture_screenshot_in_memory()
+            if not img:
+                continue
+            boxes = get_positions(img)
+            if not boxes:
+                continue
+
+            try:
+                _, _, _, current_fen = get_fen_from_position(self.color_indicator, boxes)
+                current_pieces = current_fen.split()[0]
+            except ValueError as e:
+                continue
+
+            # only accept it if we exactly match what Stockfish predicted
+            if current_pieces == expected_pieces:
+                self.last_fen = current_pieces
+                status  = f"Best Move: {move}\nMove Played: {move}"
+                if mate_flag:
+                    status += "\n𝘾𝙝𝙚𝙘𝙠𝙢𝙖𝙩𝙚"
+                    self.auto_mode_var.set(False)
+                self.update_status(status)
+                return True
+
+        # all retries exhausted
+        self.update_status(f"Move failed to register after {max_retries} attempts")
+        self.auto_mode_var.set(False)
+        return False
 
     def process_move(self):
         if self.processing_move:
@@ -546,7 +577,10 @@ class ChessPilot:
                                 if fen_after:
                                     self.last_fen = fen_after.split()[0]
             else:
-                self.execute_normal_move(best_move, mate_flag, updated_fen)
+                # grab the bool result so we can bail out on failure
+                success = self.execute_normal_move(best_move, mate_flag, updated_fen)
+                if not success:
+                    return
 
         except Exception as e:
             self.root.after(0, lambda err=e: self.update_status(f"Error: {str(err)}"))
