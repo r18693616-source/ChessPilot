@@ -5,6 +5,16 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 import shutil
+import logging
+
+# Logger setup
+logger = logging.getLogger("main")
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
+console_handler.setFormatter(formatter)
+logger.handlers = [console_handler]
+
 
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.chess_notation_to_index import chess_notation_to_index
@@ -23,6 +33,7 @@ from engine.get_best_move import get_best_move
 from engine.get_current_fen import get_current_fen
 
 def get_binary_path(binary):
+    logger.debug(f"Resolving binary path for: {binary}")
     # For Windows, ensure the binary name ends with '.exe'
     if os.name == "nt" and not binary.endswith(".exe"):
         binary += ".exe"
@@ -37,8 +48,10 @@ def get_binary_path(binary):
             path = binary
 
     if not (path and os.path.exists(path)):
+        logger.error(f"Missing binary: {binary}")
         messagebox.showerror("Error", f"{binary} is missing! Make sure it's bundled properly.")
         sys.exit(1)
+    logger.debug(f"Binary path resolved: {path}")
     return path
 
 def resource_path(relative_path):
@@ -46,10 +59,13 @@ def resource_path(relative_path):
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+    path = os.path.join(base_path, relative_path)
+    logger.debug(f"Resource path for '{relative_path}': {path}")
+    return path
 
 class ChessPilot:
     def __init__(self, root):
+        logger.info("Initializing ChessPilot application")
         self.root = root
         self.root.title("Chess Pilot")
         self.root.geometry("350x350")
@@ -88,6 +104,7 @@ class ChessPilot:
         self.set_window_icon()
         self.create_widgets()
         self.root.bind('<Escape>', self.handle_esc_key)
+        logger.info("ChessPilot UI initialized")
 
     def set_window_icon(self):
         logo_path = resource_path(os.path.join('assets', 'chess-logo.png'))
@@ -96,11 +113,13 @@ class ChessPilot:
                 img = Image.open(logo_path)
                 self.icon = ImageTk.PhotoImage(img)
                 self.root.iconphoto(False, self.icon)
-            except Exception:
-                pass
+                logger.debug("Window icon set successfully")
+            except Exception as e:
+                logger.warning(f"Failed to set window icon: {e}")
 
     def handle_esc_key(self, event=None):
         """Return to color‐selection screen if ESC is pressed."""
+        logger.info("ESC key pressed; returning to color selection")
         if self.main_frame.winfo_ismapped():
             self.main_frame.pack_forget()
             self.color_frame.pack(expand=True, fill=tk.BOTH)
@@ -112,6 +131,7 @@ class ChessPilot:
 
     def create_widgets(self):
         # Color selection screen
+        logger.debug("Creating color selection widgets")
         self.color_frame = tk.Frame(self.root, bg=self.bg_color)
         header = tk.Label(
             self.color_frame,
@@ -189,6 +209,7 @@ class ChessPilot:
         self.color_frame.pack(expand=True, fill=tk.BOTH)
 
         # Main control screen (after color is chosen)
+        logger.debug("Creating main control widgets")
         self.main_frame = tk.Frame(self.root, bg=self.bg_color)
 
         control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
@@ -230,7 +251,10 @@ class ChessPilot:
         # Disable "Play Next Move" until a color is chosen
         self.btn_play.config(state=tk.DISABLED)
 
+        logger.debug("Widgets created successfully")
+
     def update_depth_label(self, value):
+        logger.debug(f"Depth slider changed to {value}")
         self.depth_label.config(text=f"Depth: {int(float(value))}")
         self.root.update_idletasks()
 
@@ -253,7 +277,7 @@ class ChessPilot:
         return btn
 
     def create_action_button(self, parent, text, command):
-        return tk.Button(
+        btn = tk.Button(
             parent,
             text=text,
             font=('Segoe UI', 11, 'bold'),
@@ -265,8 +289,11 @@ class ChessPilot:
             pady=10,
             command=command
         )
+        btn.pack()
+        return btn
 
     def create_castling_checkboxes(self):
+        logger.debug("Creating castling checkboxes")
         style = ttk.Style()
         style.configure(
             "Castling.TCheckbutton",
@@ -294,16 +321,13 @@ class ChessPilot:
         ).grid(row=1, column=0, padx=10, sticky='w')
 
     def update_last_fen_for_color(self, fen: str):
-        """
-        Split the full FEN into piece‐placement and active‐color, then store
-        the placement under that active color for comparison in auto mode.
-        """
         parts = fen.split()
         placement, active_color = parts[0], parts[1]
         self.last_fen_by_color[active_color] = placement
+        logger.debug(f"Updated last FEN for {active_color}: {placement}")
 
     def set_color(self, color):
-        """Called when user clicks 'White' or 'Black'—switch to main controls."""
+        logger.info(f"Color selected: {'White' if color == 'w' else 'Black'}")
         self.color_indicator = color
         self.color_frame.pack_forget()
         self.main_frame.pack(expand=True, fill=tk.BOTH)
@@ -311,12 +335,13 @@ class ChessPilot:
         self.update_status(f"\nPlaying as {'White' if color == 'w' else 'Black'}")
 
     def update_status(self, message):
-        """Update the status label and refresh UI."""
+        logger.debug(f"Status update: {message.strip()}")
         self.status_label.config(text=message)
         self.depth_label.config(text=f"Depth: {self.depth_var.get()}")
         self.root.update_idletasks()
 
     def process_move_thread(self):
+        logger.info("Play Next Move button pressed; starting process_move thread")
         threading.Thread(
             target=process_move,
             args=(
@@ -336,29 +361,12 @@ class ChessPilot:
             daemon=True,
         ).start()
 
-
     def toggle_auto_mode(self):
-        """
-        Enable or disable auto‐move mode. When enabled, disable Play button
-        and launch auto_move_loop(...) in a background thread.
-        """
         if self.auto_mode_var.get():
+            logger.info("Auto mode enabled")
             self.btn_play.config(state=tk.DISABLED)
             # First, play a single move to initialize if needed
-            self.process_move_thread(
-                self.root,
-                self.color_indicator,
-                self.auto_mode_var,
-                self.btn_play,
-                self.board_positions,
-                self.update_status,
-                self.kingside_var,
-                self.queenside_var,
-                self.update_last_fen_for_color,
-                self.last_fen_by_color,
-                self.screenshot_delay_var,
-                self.processing_move,
-            )
+            self.process_move_thread()
             # Then start continuous auto loop
             threading.Thread(
                 target=auto_move_loop,
@@ -379,19 +387,15 @@ class ChessPilot:
                 daemon=True
             ).start()
         else:
+            logger.info("Auto mode disabled")
             self.btn_play.config(state=tk.NORMAL)
 
     def capture_board_screenshot(self):
-        """
-        Wrapper to capture a screenshot. Returns a PIL.Image or None on failure.
-        """
+        logger.debug("Capturing board screenshot via wrapper")
         return capture_screenshot_in_memory(self.root, self.auto_mode_var)
 
     def convert_move_to_indices(self, move: str):
-        """
-        Wrapper to convert algebraic "e2e4" style move into (start, end) pairs.
-        Returns ((c0, r0), (c1, r1)) or (None, None).
-        """
+        logger.debug(f"Converting move to indices: {move}")
         return chess_notation_to_index(
             self.color_indicator,
             self.root,
@@ -400,34 +404,25 @@ class ChessPilot:
         )
 
     def relocate_cursor_to_play_button(self):
-        """
-        Move the mouse cursor to the center of the Play button.
-        """
+        logger.debug("Relocating cursor to Play button via wrapper")
         move_cursor_to_button(self.root, self.auto_mode_var, self.btn_play)
 
     def drag_piece(self, move: str):
-        """
-        Wrapper to perform GUI piece‐drag. You likely call this inside process_move().
-        """
+        logger.debug(f"Dragging piece for move: {move}")
         move_piece(self.color_indicator, move, self.board_positions, self.auto_mode_var, self.root, self.btn_play)
 
     def expand_fen_row(self, row: str):
-        """
-        Wrapper for expand_fen_row(...) (if used).
-        """
+        logger.debug(f"Expanding FEN row: {row}")
         return expend_fen_row(row)
 
     def check_castling(self, fen: str):
-        """
-        Wrapper to check if castling is possible.
-        """
-        return is_castling_possible(fen, self.color_indicator, "kingside") or \
-               is_castling_possible(fen, self.color_indicator, "queenside")
+        result = is_castling_possible(fen, self.color_indicator, "kingside") or \
+                 is_castling_possible(fen, self.color_indicator, "queenside")
+        logger.debug(f"Check castling possibility for '{fen}': {result}")
+        return result
 
     def adjust_castling_fen(self, fen: str):
-        """
-        Update castling rights in a FEN string based on the checkbox states.
-        """
+        logger.debug(f"Adjusting castling rights for FEN: {fen}")
         return update_fen_castling_rights(
             self.color_indicator,
             self.kingside_var,
@@ -436,15 +431,11 @@ class ChessPilot:
         )
 
     def check_move_validity(self, before_fen: str, after_fen: str, move: str):
-        """
-        Wrapper to verify whether a move took effect on the board.
-        """
+        logger.debug(f"Verifying move validity: {move}")
         return did_my_piece_move(self.color_indicator, before_fen, after_fen, move)
 
     def play_normal_move(self, move: str, mate_flag: bool, expected_fen: str):
-        """
-        Wrapper to execute a normal move with retries. Returns True if successful.
-        """
+        logger.debug(f"Playing normal move via wrapper: {move}")
         return execute_normal_move(
             self.board_positions,
             self.color_indicator,
@@ -458,9 +449,7 @@ class ChessPilot:
         )
 
     def query_best_move(self, fen: str):
-        """
-        Wrapper to ask Stockfish for a best move. Returns (best_move, updated_fen, mate_flag).
-        """
+        logger.debug(f"Querying best move for FEN: {fen}")
         return get_best_move(
             self.depth_var.get(),
             fen,
@@ -469,21 +458,15 @@ class ChessPilot:
         )
 
     def read_current_fen(self):
-        """
-        Wrapper to read the board’s FEN via screen capture and OCR.
-        """
+        logger.debug("Reading current FEN via wrapper")
         return get_current_fen(self.color_indicator)
 
     def store_positions(self, x: int, y: int, size: int):
-        """
-        Wrapper to store board_positions after initial board cropping.
-        """
+        logger.debug(f"Storing board positions: x={x}, y={y}, size={size}")
         store_board_positions(self.board_positions, x, y, size)
 
     def verify_move_wrapper(self, before_fen: str, expected_fen: str, attempts_limit: int = 3):
-        """
-        Wrapper to verify move correctness with limited retries.
-        """
+        logger.debug(f"Verifying move via wrapper; expected FEN: {expected_fen}")
         return verify_move(
             self.color_indicator,
             before_fen,
@@ -492,6 +475,8 @@ class ChessPilot:
         )
 
 if __name__ == "__main__":
+    logger.info("Starting ChessPilot main loop")
     root = tk.Tk()
     app = ChessPilot(root)
     root.mainloop()
+    logger.info("ChessPilot application closed")

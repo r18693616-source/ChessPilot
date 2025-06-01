@@ -2,8 +2,16 @@ from .is_wayland import is_wayland
 import pyautogui
 from input_capture.wayland import WaylandInput
 from tkinter import messagebox
+import logging
 
-def move_cursor_to_button(self):
+logger = logging.getLogger("move cursor to button")
+logger.setLevel(logging.DEBUG)
+console_handler = logging.StreamHandler()
+formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
+console_handler.setFormatter(formatter)
+logger.handlers = [console_handler]
+
+def move_cursor_to_button(self, auto_mode_var, btn_play):
     try:
         x = self.btn_play.winfo_rootx()
         y = self.btn_play.winfo_rooty()
@@ -17,5 +25,6 @@ def move_cursor_to_button(self):
         else:
             pyautogui.moveTo(center_x, center_y, duration=0.1)
     except Exception as e:
+        logger.error(f"Failed to relocate mouse cursor: {e}", exc_info=True)
         self.root.after(0, lambda err=e: messagebox.showerror(f"Error", f"Could not relocate the mouse\n{str(err)}"))
         self.auto_mode_var.set(False)

@@ -1,35 +1,54 @@
+import logging
 from engine.is_castling_possible import is_castling_possible
 
-def update_fen_castling_rights(color_indicator,kingside_var, queenside_var, fen):
+# Setup local logger
+logger = logging.getLogger("update_fen_castling")
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+
+def update_fen_castling_rights(color_indicator, kingside_var, queenside_var, fen):
     fields = fen.split()
+    if len(fields) < 6:
+        logger.error(f"Malformed FEN: {fen}")
+        return fen  # return as-is if FEN is malformed
+
+    logger.debug(f"Original FEN: {fen}")
+
     white_castling = ""
+    black_castling = ""
+
+    # White castling rights
     if is_castling_possible(fen, "w", "kingside"):
-        if color_indicator == "w":
-            if kingside_var.get():
-                white_castling += "K"
-        else:
+        if color_indicator == "w" and kingside_var.get():
+            white_castling += "K"
+        elif color_indicator != "w":
             white_castling += "K"
     if is_castling_possible(fen, "w", "queenside"):
-        if color_indicator == "w":
-            if queenside_var.get():
-                white_castling += "Q"
-        else:
+        if color_indicator == "w" and queenside_var.get():
             white_castling += "Q"
-    black_castling = ""
+        elif color_indicator != "w":
+            white_castling += "Q"
+
+    # Black castling rights
     if is_castling_possible(fen, "b", "kingside"):
-        if color_indicator == "b":
-            if kingside_var.get():
-                black_castling += "k"
-        else:
+        if color_indicator == "b" and kingside_var.get():
+            black_castling += "k"
+        elif color_indicator != "b":
             black_castling += "k"
     if is_castling_possible(fen, "b", "queenside"):
-        if color_indicator == "b":
-            if queenside_var.get():
-                black_castling += "q"
-        else:
+        if color_indicator == "b" and queenside_var.get():
             black_castling += "q"
-    new_castling = white_castling + black_castling
-    if new_castling == "":
-        new_castling = "-"
+        elif color_indicator != "b":
+            black_castling += "q"
+
+    new_castling = white_castling + black_castling or "-"
+    logger.debug(f"Updated castling field: {new_castling}")
+
     fields[2] = new_castling
-    return " ".join(fields)
+    updated_fen = " ".join(fields)
+    logger.info(f"Updated FEN: {updated_fen}")
+    return updated_fen
