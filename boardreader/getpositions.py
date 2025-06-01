@@ -2,9 +2,22 @@ import numpy as np
 import onnxruntime as ort
 from PIL import Image
 from utils.resource_path import resource_path
+import sys
+import os
+import logging
+
+# Logger setup
+logger = logging.getLogger("getpositions")
+logger.setLevel(logging.DEBUG)
 
 # Use the helper function to get the correct model path
 model_path = resource_path("chess_detection.onnx")
+if not os.path.exists(model_path):
+    logger.warning(
+        "Missing chess_detection.onnx – please download and place it in the project root. "
+        "See README for instructions: https://github.com/OTAKUWeBer/ChessPilot/blob/main/README.md"
+    )
+    sys.exit(1)
 
 # Load the ONNX model from the correct path
 session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
