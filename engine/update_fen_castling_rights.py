@@ -1,7 +1,7 @@
 import logging
 from engine.is_castling_possible import is_castling_possible
 
-# Setup local logger
+# Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

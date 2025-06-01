@@ -1,13 +1,7 @@
 import numpy as np
 import onnxruntime as ort
 from PIL import Image
-import os
-import sys
-
-def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller bundle """
-    base_path = getattr(sys, '_MEIPASS', os.path.abspath("."))
-    return os.path.join(base_path, relative_path)
+from utils.resource_path import resource_path
 
 # Use the helper function to get the correct model path
 model_path = resource_path("chess_detection.onnx")

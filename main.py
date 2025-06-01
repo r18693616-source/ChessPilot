@@ -1,41 +1,15 @@
-import sys
 import os
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 from PIL import Image, ImageTk
-import shutil
 import logging
 
-COLOR_RESET   = "\x1b[0m"
-COLOR_RED     = "\x1b[31m"
-COLOR_YELLOW  = "\x1b[33m"
-COLOR_GREEN   = "\x1b[32m"
-COLOR_CYAN    = "\x1b[36m"
+from utils.logging_setup import setup_console_logging
+from utils.resource_path import resource_path
 
-class ColorFormatter(logging.Formatter):
-    LEVEL_COLORS = {
-        logging.DEBUG:    COLOR_CYAN,
-        logging.INFO:     COLOR_GREEN,
-        logging.WARNING:  COLOR_YELLOW,
-        logging.ERROR:    COLOR_RED,
-        logging.CRITICAL: COLOR_RED,
-    }
-
-    def format(self, record):
-        color = self.LEVEL_COLORS.get(record.levelno, COLOR_RESET)
-        # colorize the level name and message
-        record.levelname = f"{color}{record.levelname}{COLOR_RESET}"
-        record.msg       = f"{color}{record.msg}{COLOR_RESET}"
-        return super().format(record)
-
-root_logger = logging.getLogger()           # the “root” logger
-root_logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-ch.setFormatter(ColorFormatter("[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
-root_logger.addHandler(ch)
-
+# Initialize Logging
+setup_console_logging()
 
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.chess_notation_to_index import chess_notation_to_index
@@ -53,36 +27,6 @@ from engine.auto_move import auto_move_loop
 from engine.get_best_move import get_best_move
 from engine.get_current_fen import get_current_fen
 
-def get_binary_path(binary):
-    logger.debug(f"Resolving binary path for: {binary}")
-    # For Windows, ensure the binary name ends with '.exe'
-    if os.name == "nt" and not binary.endswith(".exe"):
-        binary += ".exe"
-        
-    if getattr(sys, 'frozen', False):
-        # When bundled with PyInstaller, binaries should be in the _MEIPASS folder
-        path = os.path.join(sys._MEIPASS, binary)
-    else:
-        # Check for binary in system PATH on non-frozen mode
-        path = shutil.which(binary)
-        if path is None:
-            path = binary
-
-    if not (path and os.path.exists(path)):
-        logger.error(f"Missing binary: {binary}")
-        messagebox.showerror("Error", f"{binary} is missing! Make sure it's bundled properly.")
-        sys.exit(1)
-    logger.debug(f"Binary path resolved: {path}")
-    return path
-
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    path = os.path.join(base_path, relative_path)
-    logger.debug(f"Resource path for '{relative_path}': {path}")
-    return path
 
 class ChessPilot:
     def __init__(self, root):

@@ -3,6 +3,7 @@ import logging
 from boardreader import get_positions, get_fen_from_position
 from engine import capture_screenshot_in_memory
 
+# Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 

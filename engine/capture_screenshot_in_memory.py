@@ -4,34 +4,13 @@ import io
 from .is_wayland import is_wayland
 import subprocess
 from tkinter import messagebox
-import os
-import sys
-import shutil
 import logging
+from utils.get_binary_path import get_binary_path
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def get_binary_path(binary):
-    logger.debug(f"Resolving path for binary: {binary}")
-    if os.name == "nt" and not binary.endswith(".exe"):
-        binary += ".exe"
-        
-    if getattr(sys, 'frozen', False):
-        path = os.path.join(sys._MEIPASS, binary)
-        logger.debug(f"Frozen app, binary path: {path}")
-    else:
-        path = shutil.which(binary)
-        if path is None:
-            path = binary
-        logger.debug(f"Non-frozen, binary resolved to: {path}")
-
-    if not (path and os.path.exists(path)):
-        logger.error(f"Binary not found: {binary}")
-        messagebox.showerror("Error", f"{binary} is missing! Make sure it's bundled properly.")
-        sys.exit(1)
-    return path
 
 def capture_screenshot_in_memory(root=None, auto_mode_var=None):
     grim_path = get_binary_path("grim") if is_wayland() else None
