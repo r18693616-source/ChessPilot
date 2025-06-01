@@ -12,7 +12,6 @@
 - **Stockfish Integration**: Uses the Stockfish chess engine to suggest the best move.
 - **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
 -  **Auto Move Execution**: Automatically plays the best move suggested by Stockfish.
-   ⚠️ **Note**: This feature is currently **broken** and may not function as expected. A fix is in progress.requiring any further clicks.
 - **Manual Play**: A **"Play Next Move"** button allows you to manually play the next move after you analyze the board.
 - **Graphical User Interface (GUI)**: Provides a user-friendly interface instead of terminal-based interaction.
 - **New Feature – ESC Key**: Allows the user to go back and select the playing color again.

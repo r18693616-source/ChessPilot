@@ -75,11 +75,10 @@ class ChessPilot:
         # Game state variables
         self.color_indicator = None
         self.last_fen = ""
-        self.last_fen_by_color = {'w': '', 'b': ''}
+        self.last_fen_by_color = {'w': None, 'b': None}
         self.depth_var = tk.IntVar(value=15)
         self.auto_mode_var = tk.BooleanVar(value=False)
         self.board_positions = {}
-        self.processing_move = False
 
         # Screenshot delay (0.0 to 1.0 seconds)
         self.screenshot_delay_var = tk.DoubleVar(value=0.4)
@@ -356,7 +355,6 @@ class ChessPilot:
                 self.update_last_fen_for_color,
                 self.last_fen_by_color,
                 self.screenshot_delay_var,
-                self.processing_move,
             ),
             daemon=True,
         ).start()
@@ -378,7 +376,6 @@ class ChessPilot:
                     self.board_positions,
                     self.last_fen_by_color,
                     self.screenshot_delay_var,
-                    self.processing_move,
                     self.update_status,
                     self.kingside_var,
                     self.queenside_var,
@@ -386,6 +383,7 @@ class ChessPilot:
                 ),
                 daemon=True
             ).start()
+
         else:
             logger.info("Auto mode disabled")
             self.btn_play.config(state=tk.NORMAL)

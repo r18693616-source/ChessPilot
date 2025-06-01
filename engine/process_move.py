@@ -12,6 +12,9 @@ from engine.get_current_fen import get_current_fen
 from engine.verify_move import verify_move
 from engine.move_piece import move_piece
 
+# Import the shared Event from processing_sync.py (no more circular import)
+from engine.processing_sync import processing_event
+
 # Logger setup
 logger = logging.getLogger("process_move")
 logger.setLevel(logging.DEBUG)
@@ -19,6 +22,7 @@ console_handler = logging.StreamHandler()
 formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
 console_handler.setFormatter(formatter)
 logger.handlers = [console_handler]
+
 
 def process_move(
     root,
@@ -32,13 +36,14 @@ def process_move(
     update_last_fen_for_color,
     last_fen_by_color,
     screenshot_delay_var,
-    processing_move
 ):
-    if processing_move:
+    # If another move is already running, just return
+    if processing_event.is_set():
         logger.warning("Move already being processed; aborting this call.")
         return
 
-    processing_move = True
+    # Mark “we are processing a move”
+    processing_event.set()
     root.after(0, lambda: btn_play.config(state=tk.DISABLED))
     root.after(0, lambda: update_status("\nAnalyzing board..."))
 
@@ -142,7 +147,8 @@ def process_move(
         auto_mode_var.set(False)
 
     finally:
-        processing_move = False
+        # Clear the Event so auto_move_loop knows we’re done
+        processing_event.clear()
         if not auto_mode_var.get():
             root.after(0, lambda: btn_play.config(state=tk.NORMAL))
         logger.info("process_move completed.")
