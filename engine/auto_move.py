@@ -8,10 +8,11 @@ from engine.process_move import process_move
 # Configure logger
 logger = logging.getLogger("auto_move")
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
+if not logger.handlers:
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
 
 
 def process_move_thread(
@@ -63,33 +64,36 @@ def auto_move_loop(
     queenside_var,
     update_last_fen_for_color
 ):
+
     logger.info("Auto move loop started")
     opp_color = 'b' if color_indicator == 'w' else 'w'
     logger.info(f"Player color: {color_indicator}, Opponent color: {opp_color}")
-    
+
     while auto_mode_var.get():
         logger.debug("Loop tick")
+
         if processing_move:
-            logger.info("Currently processing a move, waiting...")
+            logger.debug("Currently processing a move; sleeping...")
             time.sleep(0.5)
             continue
 
+        # If we don't know the board positions yet, wait for them to be set
         if not board_positions:
-            logger.warning("Board positions are not available")
+            logger.warning("Board positions not yet initialized; sleeping...")
             time.sleep(0.5)
             continue
 
         try:
-            logger.debug("Capturing screenshot...")
+            logger.debug("Capturing screenshot for auto-move")
             screenshot = capture_screenshot_in_memory()
             if not screenshot:
-                logger.warning("Failed to capture screenshot")
+                logger.warning("Screenshot failed; retrying...")
                 time.sleep(0.2)
                 continue
 
             boxes = get_positions(screenshot)
             if not boxes:
-                logger.warning("No board positions detected from screenshot")
+                logger.warning("Board detection failed; retrying...")
                 time.sleep(0.2)
                 continue
 
@@ -97,52 +101,76 @@ def auto_move_loop(
             logger.info(f"FEN extracted: {current_fen}")
             parts = current_fen.split()
             if len(parts) < 2:
-                logger.warning("FEN string is malformed")
+                logger.warning("Malformed FEN; retrying...")
                 time.sleep(0.2)
                 continue
 
             placement, active = parts[0], parts[1]
-            logger.debug(f"Active: {active}, Placement: {placement}")
+            logger.debug(f"Placement: {placement}, Active: {active}")
 
+            # It's still opponent's turn
             if active == opp_color:
-                if placement != last_fen_by_color.get(opp_color, ''):
-                    logger.info("Opponent moved. Updating last FEN")
+                old = last_fen_by_color.get(opp_color)
+                # If we've never recorded opponent's FEN, or it changed, update it
+                if old is None or placement != old:
+                    logger.info("Opponent just moved (or first-time); updating last_fen_by_color for opponent.")
                     last_fen_by_color[opp_color] = placement
                 else:
-                    logger.debug("Opponent position unchanged")
+                    logger.debug("Opponent placement unchanged.")
                 time.sleep(0.2)
                 continue
 
-            if active == color_indicator and placement == last_fen_by_color.get(opp_color, ''):
-                logger.debug("It's our turn but no change in opponent FEN. Waiting...")
-                time.sleep(0.2)
-                continue
+            # It's our turn
+            if active == color_indicator:
+                # If we've never recorded opponent's FEN, wait for them to move at least once
+                if opp_color not in last_fen_by_color:
+                    logger.debug("Our turn detected but no prior opponent-FEN recorded; sleeping...")
+                    time.sleep(0.2)
+                    continue
 
-            last_fen_by_color[opp_color] = placement
-            delay = screenshot_delay_var.get()
-            logger.info(f"Ready to move. Waiting for delay: {delay}s")
-            time.sleep(delay)
+                # If opponent's placement hasn't changed since last record, they haven't moved yet
+                if placement == last_fen_by_color[opp_color]:
+                    logger.debug("It's our turn but opponent hasn't moved; sleeping...")
+                    time.sleep(0.2)
+                    continue
 
-            process_move_thread(
-                root,
-                color_indicator,
-                auto_mode_var,
-                btn_play,
-                board_positions,
-                update_status_callback,
-                kingside_var,
-                queenside_var,
-                update_last_fen_for_color,
-                last_fen_by_color,
-                screenshot_delay_var,
-                processing_move,
-            )
+                # Otherwise, opponent truly moved—update their last-seen placement
+                last_fen_by_color[opp_color] = placement
+                logger.info("Detected genuine opponent move; will compute our move.")
 
-            logger.debug("Move processed, sleeping for next cycle...")
-            time.sleep(delay)
+                # Pause briefly to let the physical board settle
+                delay = screenshot_delay_var.get()
+                logger.debug(f"Sleeping for delay: {delay}")
+                time.sleep(delay)
+
+                # Spawn the process_move thread to actually calculate and send our move
+                process_move_thread(
+                    root,
+                    color_indicator,
+                    auto_mode_var,
+                    btn_play,
+                    board_positions,
+                    update_status_callback,
+                    kingside_var,
+                    queenside_var,
+                    update_last_fen_for_color,
+                    last_fen_by_color,
+                    screenshot_delay_var,
+                    processing_move,
+                )
+
+                # Record our own placement (in case needed later)
+                logger.info(f"Updating last_fen_by_color for our color ({color_indicator}) to: {placement}")
+                last_fen_by_color[color_indicator] = placement
+
+                # Sleep again to let our move register visually before next iteration
+                logger.debug(f"Sleeping again for delay: {delay}")
+                time.sleep(delay)
 
         except Exception as e:
-            logger.error(f"Exception occurred: {e}")
+            logger.error(f"Exception in auto_move_loop: {e}", exc_info=True)
             root.after(0, lambda err=e: update_status_callback(f"Error: {str(err)}"))
             auto_mode_var.set(False)
             break
+
+    logger.info("Exiting auto_move_loop")

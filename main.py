@@ -478,5 +478,10 @@ if __name__ == "__main__":
     logger.info("Starting ChessPilot main loop")
     root = tk.Tk()
     app = ChessPilot(root)
-    root.mainloop()
+    try:
+        root.mainloop()
+    except KeyboardInterrupt:
+        logger.info("Exiting APP")
+        root.destroy()
     logger.info("ChessPilot application closed")
+
