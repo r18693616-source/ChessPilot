@@ -148,7 +148,6 @@ def auto_move_loop(
                 continue
 
             if active == color_indicator:
-                # (a) If we’ve never recorded opp_color before, wait
                 if opp_color not in last_fen_by_color:
                     logger.debug(
                         "Our turn detected but no previous opponent-FEN known; sleeping 0.2s…"
