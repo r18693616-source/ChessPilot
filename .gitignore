@@ -67,3 +67,4 @@ release-notes.md
 stockfish
 stockfish.exe
 chess_detection.onnx
+*.zip

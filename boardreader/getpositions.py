@@ -13,7 +13,7 @@ logger.setLevel(logging.DEBUG)
 # Use the helper function to get the correct model path
 model_path = resource_path("chess_detection.onnx")
 if not os.path.exists(model_path):
-    logger.warning(
+    logger.error(
         "Missing chess_detection.onnx – please download and place it in the project root. "
         "See README for instructions: https://github.com/OTAKUWeBer/ChessPilot/blob/main/README.md"
     )

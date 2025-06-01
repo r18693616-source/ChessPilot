@@ -12,6 +12,21 @@ from utils.chess_resources_manager import extract_stockfish, rename_onnx_model
 
 # Initialize Logging
 setup_console_logging()
+logger = logging.getLogger("main")
+
+    
+if not extract_stockfish():
+    logger.error(
+        "Stockfish extraction failed. Please check the logs "
+        "and ensure the Stockfish ZIP is downloaded correctly."
+    )
+    sys.exit(1)
+if not rename_onnx_model():
+    logger.error(
+        "ONNX model rename failed. Please check the logs "
+        "and ensure the model is downloaded correctly."
+    )
+    sys.exit(1)
 
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.chess_notation_to_index import chess_notation_to_index
@@ -440,21 +455,6 @@ class ChessPilot:
         )
 
 if __name__ == "__main__":
-    logger = logging.getLogger("main")
-    
-    if not extract_stockfish():
-        logger.warning(
-            "Stockfish extraction failed. Please check the logs "
-            "and ensure the Stockfish ZIP is downloaded correctly."
-        )
-        sys.exit(1)
-
-    if not rename_onnx_model():
-        logger.warning(
-            "ONNX model rename failed. Please check the logs "
-            "and ensure the model is downloaded correctly."
-)
-        sys.exit(1)
 
     logger.info("Stockfish and ONNX model setup completed successfully")
     logger.info("Starting ChessPilot main loop")

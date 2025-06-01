@@ -3,6 +3,7 @@ import zipfile
 from pathlib import Path
 import shutil
 import logging
+from shutil import which
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -36,39 +37,43 @@ def extract_stockfish():
     If not already present, looks for a ZIP containing 'stockfish' in its name and extracts it.
     If neither is found, logs an error referring the user to the README.
     """
-    target_name = "stockfish.exe" if os.name == 'nt' else "stockfish"
+
+    target_name = "stockfish.exe" if os.name == "nt" else "stockfish"
     final_path = Path.cwd() / target_name
 
-    # If the binary already exists, do nothing
+    system_path = which(target_name)
+    if system_path:
+        logger.info(f"Found system-installed Stockfish at {system_path}. Skipping extraction.")
+        return True
+
     if final_path.exists():
         logger.info(f"Stockfish binary already exists at {final_path}. Skipping extraction.")
         return True
 
-    # Look for a ZIP with "stockfish" in its filename
     zip_path = find_file_with_keyword("stockfish", ".zip")
     if not zip_path:
         message = (
-            "No Stockfish binary (or ZIP) found in the project root. "
-            f"Please download Stockfish using the link in the README: {README_STOCKFISH_URL}"
+            "No Stockfish executable found on your PATH or in the project root. "
+            "Please install Stockfish (e.g. `pacman -S stockfish` or `apt install stockfish`),\n"
+            f"or place a ZIP with “stockfish” in its name into the project root. "
+            f"See README for details: {README_STOCKFISH_URL}"
         )
         logger.error(message)
-        print(message)
         return False
 
     extract_to = Path.cwd() / "temp_stockfish_extract"
     extract_to.mkdir(exist_ok=True)
 
-    logger.info(f"Extracting Stockfish from {zip_path}...")
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    logger.info(f"Extracting Stockfish from {zip_path} …")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
         zip_ref.extractall(extract_to)
 
-    # Find the Stockfish executable inside the extracted folder
     stockfish_exe = None
     for path in extract_to.rglob("*"):
         if (
             path.is_file()
             and "stockfish" in path.name.lower()
-            and path.suffix.lower() in ['.exe', '']
+            and path.suffix.lower() in [".exe", ""]
         ):
             stockfish_exe = path
             break
@@ -79,25 +84,25 @@ def extract_stockfish():
             f"Please verify the contents of the ZIP (see README for correct download): {README_STOCKFISH_URL}"
         )
         logger.error(message)
-        print(message)
         shutil.rmtree(extract_to)
         return False
 
-    # Move and rename to the final path
+    # Move and rename into place
     shutil.move(str(stockfish_exe), final_path)
     logger.info(f"Stockfish extracted and renamed to {final_path}")
 
     # On Unix/macOS, ensure execute permissions
-    if os.name != 'nt':
+    if os.name != "nt":
         try:
             perms = final_path.stat().st_mode
             final_path.chmod(perms | 0o111)
         except Exception as e:
             logger.warning(f"Could not set execute permissions on {final_path}: {e}")
 
-    # Cleanup
+    # Clean up the temporary directory
     shutil.rmtree(extract_to)
     return True
+
 
 
 def rename_onnx_model():
@@ -121,7 +126,6 @@ def rename_onnx_model():
             f"Please download the ONNX model using the link in the README: {README_ONNX_URL}"
         )
         logger.error(message)
-        print(message)
         return False
 
     # Move or rename into place
