@@ -8,14 +8,8 @@ from engine.process_move import process_move
 from engine.processing_sync import processing_event   # shared Event
 
 # Logger setup
-logger = logging.getLogger("auto_move")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-if not logger.handlers:
-    console_handler = logging.StreamHandler()
-    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-
 
 def process_move_thread(
     root,

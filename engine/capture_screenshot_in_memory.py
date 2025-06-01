@@ -10,12 +10,8 @@ import shutil
 import logging
 
 # Logger setup
-logger = logging.getLogger("screenshot")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def get_binary_path(binary):
     logger.debug(f"Resolving path for binary: {binary}")

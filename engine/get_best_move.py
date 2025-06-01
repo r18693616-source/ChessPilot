@@ -5,12 +5,8 @@ import logging
 from tkinter import messagebox
 
 # Logger setup
-logger = logging.getLogger("stockfish_engine")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
     try:

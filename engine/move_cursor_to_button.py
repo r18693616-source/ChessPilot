@@ -4,12 +4,8 @@ from input_capture.wayland import WaylandInput
 from tkinter import messagebox
 import logging
 
-logger = logging.getLogger("move cursor to button")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def move_cursor_to_button(root, auto_mode_var, btn_play):
     try:

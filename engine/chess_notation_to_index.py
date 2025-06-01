@@ -2,12 +2,8 @@ from tkinter import messagebox
 import logging
 
 # Logger setup
-logger = logging.getLogger("notation")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def chess_notation_to_index(color_indicator, root, auto_mode_var, move):
     logger.debug(f"Translating move: {move} for color: {color_indicator}")

@@ -2,12 +2,8 @@ from boardreader import get_positions, get_fen_from_position
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 import logging
 
-logger = logging.getLogger("get current fen")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def get_current_fen(color_indicator):
     try:

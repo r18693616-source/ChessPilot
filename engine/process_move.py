@@ -14,12 +14,8 @@ from engine.move_piece import move_piece
 from engine.processing_sync import processing_event
 
 # Logger setup
-logger = logging.getLogger("process_move")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 
 def process_move(

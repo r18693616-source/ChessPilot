@@ -2,13 +2,8 @@ import logging
 from engine.is_castling_possible import is_castling_possible
 
 # Setup local logger
-logger = logging.getLogger("update_fen_castling")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
 
 def update_fen_castling_rights(color_indicator, kingside_var, queenside_var, fen):
     fields = fen.split()

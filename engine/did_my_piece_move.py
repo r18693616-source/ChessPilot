@@ -1,12 +1,8 @@
 import logging
 
 # Logger setup
-logger = logging.getLogger("move_check")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def did_my_piece_move(color_indicator, before_fen: str, after_fen: str, move: str) -> bool:
     """

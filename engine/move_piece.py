@@ -7,12 +7,8 @@ from engine.chess_notation_to_index import chess_notation_to_index
 from engine.move_cursor_to_button import move_cursor_to_button
 
 # Logger setup
-logger = logging.getLogger("move_piece")
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
 
 def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play):
     logger.info(f"Attempting move: {move}")

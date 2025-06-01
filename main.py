@@ -7,13 +7,34 @@ from PIL import Image, ImageTk
 import shutil
 import logging
 
-# Logger setup
-logger = logging.getLogger("main")
-logger.setLevel(logging.DEBUG)
-console_handler = logging.StreamHandler()
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] %(message)s", "%H:%M:%S")
-console_handler.setFormatter(formatter)
-logger.handlers = [console_handler]
+COLOR_RESET   = "\x1b[0m"
+COLOR_RED     = "\x1b[31m"
+COLOR_YELLOW  = "\x1b[33m"
+COLOR_GREEN   = "\x1b[32m"
+COLOR_CYAN    = "\x1b[36m"
+
+class ColorFormatter(logging.Formatter):
+    LEVEL_COLORS = {
+        logging.DEBUG:    COLOR_CYAN,
+        logging.INFO:     COLOR_GREEN,
+        logging.WARNING:  COLOR_YELLOW,
+        logging.ERROR:    COLOR_RED,
+        logging.CRITICAL: COLOR_RED,
+    }
+
+    def format(self, record):
+        color = self.LEVEL_COLORS.get(record.levelno, COLOR_RESET)
+        # colorize the level name and message
+        record.levelname = f"{color}{record.levelname}{COLOR_RESET}"
+        record.msg       = f"{color}{record.msg}{COLOR_RESET}"
+        return super().format(record)
+
+root_logger = logging.getLogger()           # the “root” logger
+root_logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+ch.setFormatter(ColorFormatter("[%(asctime)s] [%(levelname)s] %(message)s", datefmt="%H:%M:%S"))
+root_logger.addHandler(ch)
 
 
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
@@ -473,6 +494,7 @@ class ChessPilot:
         )
 
 if __name__ == "__main__":
+    logger = logging.getLogger("main")
     logger.info("Starting ChessPilot main loop")
     root = tk.Tk()
     app = ChessPilot(root)
