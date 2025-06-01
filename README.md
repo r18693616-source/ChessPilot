@@ -41,22 +41,44 @@ Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/Ches
 
 ## Prerequisites
 
-Ensure the following software is installed:
+Make sure you have:
 
 - **Python 3.10+**
-- **Python Libraries**:
+- **Python Packages**:
   - `mss`
   - `Pillow`
   - `pyautogui`
   - `onnxruntime`
   - `numpy`
-  - `tkinter` (usually pre-installed with Python)
+  - `tkinter`
 
-Install all dependencies with:
+### Installing Dependencies
 
 ```bash
 pip install -r requirements.txt
 ````
+
+### If `tkinter` is Missing
+
+Tkinter is usually bundled with Python on Windows and macOS, but if you're on Linux or using a minimal Python build, you may need to install it manually:
+
+* **Ubuntu / Debian:**
+
+  ```bash
+  sudo apt install python3-tk
+  ```
+
+* **Arch Linux:**
+
+  ```bash
+  sudo pacman -S tk
+  ```
+
+* **Fedora:**
+
+  ```bash
+  sudo dnf install python3-tkinter
+  ```
 
 ---
 
