@@ -11,8 +11,6 @@ from engine.store_board_positions import store_board_positions
 from engine.get_current_fen import get_current_fen
 from engine.verify_move import verify_move
 from engine.move_piece import move_piece
-
-# Import the shared Event from processing_sync.py (no more circular import)
 from engine.processing_sync import processing_event
 
 # Logger setup
@@ -119,7 +117,6 @@ def process_move(
                         if fen_after:
                             last_fen_by_color[color_indicator] = fen_after.split()[0]
                         logger.info("Castling move verified and updated.")
-                    auto_mode_var.set(False)
                 else:
                     logger.warning("Castling not possible according to board state.")
             else:
