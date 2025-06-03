@@ -68,3 +68,5 @@ stockfish
 stockfish.exe
 chess_detection.onnx
 *.zip
+wayland-info
+grim
