@@ -70,3 +70,4 @@ chess_detection.onnx
 *.zip
 wayland-info
 grim
+*.AppDir
