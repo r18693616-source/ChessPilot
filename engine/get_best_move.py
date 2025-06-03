@@ -60,6 +60,19 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
                 logger.info(f"Best move received: {best_move}")
                 break
 
+        # If Stockfish did not return a best move, inform the user
+        if best_move is None:
+            error_msg = "Stockfish did not respond. Please download the correct version according to your CPU architecture."
+            logger.error(error_msg)
+            if root:
+                root.after(0, lambda: messagebox.showerror("Error", error_msg))
+            if auto_mode_var:
+                auto_mode_var.set(False)
+            stockfish.stdin.write("quit\n")
+            stockfish.stdin.flush()
+            stockfish.wait()
+            return None, None, False
+
         updated_fen = None
         if best_move:
             stockfish.stdin.write(f"position fen {fen} moves {best_move}\n")

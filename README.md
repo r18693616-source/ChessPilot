@@ -6,18 +6,18 @@
 
 ## Features
 
-- **FEN Extraction**: Detects the board position from your screen using [Zai-Kun's Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection).
-- **Local Model Inference**: Uses a local ONNX model to ensure fast, offline board recognition.
-- **Stockfish Integration**: Analyzes the board and suggests the best move using the Stockfish chess engine.
-- **Auto Move Execution**: Automatically plays the best move on your screen.
-- **Manual Play**: Use a **"Play Next Move"** button to control when the move is made.
-- **Board Flipping**: Automatically flips the board if you're playing as Black.
-- **Castling Support**: Tick checkboxes to indicate castling rights before each move.
-- **Depth Control**: A slider lets you set Stockfish’s analysis depth (default: 15).
-- **Retry Mechanism**: Retries the move up to 3 times if it doesn't execute correctly.
-- **ESC Key Functionality**: Press ESC to reselect playing color.
-- **GUI Interface**: Uses Tkinter for a user-friendly, interactive experience.
-- **Performance Optimized**: All processing is done locally—no external API calls.
+* **FEN Extraction**: Detects the board position from your screen using [Zai-Kun's Chess Pieces Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection).
+* **Local Model Inference**: Uses a local ONNX model to ensure fast, offline board recognition.
+* **Stockfish Integration**: Analyzes the board and suggests the best move using the Stockfish chess engine.
+* **Auto Move Execution**: Automatically plays the best move on your screen.
+* **Manual Play**: Use a **"Play Next Move"** button to control when the move is made.
+* **Board Flipping**: Automatically flips the board if you're playing as Black.
+* **Castling Support**: Tick checkboxes to indicate castling rights before each move.
+* **Depth Control**: A slider lets you set Stockfish’s analysis depth (default: 15).
+* **Retry Mechanism**: Retries the move up to 3 times if it doesn't execute correctly.
+* **ESC Key Functionality**: Press ESC to reselect playing color.
+* **GUI Interface**: Uses Tkinter for a user-friendly, interactive experience.
+* **Performance Optimized**: All processing is done locally—no external API calls.
 
 ---
 
@@ -27,12 +27,14 @@ Get the latest release from [GitHub Releases](https://github.com/OTAKUWeBer/Ches
 
 ### Required Downloads (Place These in the Project Folder)
 
-1. **Chess Detection Model**  
-   Download the ONNX model from:  
+1. **Chess Detection Model**
+   Download the ONNX model from:
    [Download ONNX Model](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx)
 
-2. **Stockfish Engine**  
-   Download a Stockfish ZIP file from the official site:  
+   > ⚙️ **Note:** The ONNX runtime may require the Microsoft Visual C++ Redistributable on Windows. Download the latest supported version from the official Microsoft site: [Visual C++ Redistributable Downloads](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+
+2. **Stockfish Engine**
+   Download a Stockfish ZIP file from the official site:
    [Download Stockfish ZIP](https://stockfishchess.org/download/)
 
 > 🗂️ **Important:** Do **not** rename the files. Just place both the ONNX file and Stockfish ZIP directly inside the `ChessPilot` directory (same folder as `main.py`). The script will automatically handle extraction and detection.
