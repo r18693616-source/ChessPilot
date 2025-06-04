@@ -43,21 +43,11 @@ def extract_stockfish():
     if getattr(sys, 'frozen', False):
         bundled_name = "stockfish.exe" if os.name == "nt" else "stockfish"
         bundled_path = Path(sys._MEIPASS) / bundled_name
-        target_name = bundled_name
-        final_path = Path.cwd() / target_name
-
         if bundled_path.exists():
-            try:
-                # Copy the bundled binary into the cwd (so that subsequent code can invoke it)
-                shutil.copy2(str(bundled_path), str(final_path))
-                if os.name != "nt":
-                    final_path.chmod(final_path.stat().st_mode | 0o111)
-                logger.info(f"Copied bundled Stockfish from {bundled_path} to {final_path}.")
-                return True
-            except Exception as e:
-                logger.warning(f"Failed to copy bundled Stockfish: {e}")
-                # Fall back to the normal logic below if copy fails
-        # If it wasn’t found in _MEIPASS, proceed with the normal search logic
+            # No copy necessary; bundled binary will be loaded directly from _MEIPASS
+            logger.info(f"Using bundled Stockfish at {bundled_path}.")
+            return True
+        # If not found in _MEIPASS, proceed with the normal logic
 
     target_name = "stockfish.exe" if os.name == "nt" else "stockfish"
     final_path = Path.cwd() / target_name
@@ -125,36 +115,29 @@ def extract_stockfish():
     return True
 
 
-
 def rename_onnx_model():
-    """
-    Ensures an ONNX model exists at ./chess_detection.onnx.
-    If not already present, looks for any file with 'chess_detection' in its name and '.onnx' extension.
-    If neither is found, logs an error referring the user to the README.
-    """
 
-    # 1) If running as a PyInstaller‐frozen bundle, check if the ONNX file was bundled inside _MEIPASS
+    # 1) If running as a PyInstaller‐frozen bundle, look in _MEIPASS only.
     if getattr(sys, 'frozen', False):
         bundled_model = Path(sys._MEIPASS) / "chess_detection.onnx"
-        target_path = Path.cwd() / "chess_detection.onnx"
         if bundled_model.exists():
-            try:
-                shutil.copy2(str(bundled_model), str(target_path))
-                logger.info(f"Copied bundled ONNX model from {bundled_model} to {target_path}.")
-                return True
-            except Exception as e:
-                logger.warning(f"Failed to copy bundled ONNX model: {e}")
-                # Fall back to the normal logic below if copy fails
-        # If it wasn’t found in _MEIPASS, proceed with the normal search logic
+            logger.info(f"Using bundled ONNX model at {bundled_model}.")
+            return True
+        else:
+            # If the ONNX wasn’t bundled correctly, log an error:
+            message = (
+                "ONNX model was expected inside the PyInstaller bundle but was not found. "
+                f"Make sure PyInstaller was run with --add-data 'path/to/chess_detection.onnx:.'"
+            )
+            logger.error(message)
+            return False
 
+    # 2) If not frozen (regular development mode), run the original search/rename logic:
     target_path = Path.cwd() / "chess_detection.onnx"
-
-    # If the correctly named model already exists, do nothing
     if target_path.exists():
         logger.info(f"ONNX model already exists at {target_path}. Skipping rename.")
         return True
 
-    # Look for any *.onnx file with 'chess_detection' in its name
     onnx_file = find_file_with_keyword("chess_detection", ".onnx")
     if not onnx_file:
         message = (
