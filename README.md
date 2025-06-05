@@ -53,6 +53,7 @@ Make sure you have:
   - `pywin32`
   - `onnxruntime`
   - `numpy`
+  - `colorama`
   - `tkinter`
 
 ### Installing Dependencies
