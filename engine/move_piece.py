@@ -1,10 +1,17 @@
 import pyautogui
 import logging
 from tkinter import messagebox
+import os
+import time
 from .is_wayland import is_wayland
 from input_capture.wayland import WaylandInput
 from engine.chess_notation_to_index import chess_notation_to_index
 from engine.move_cursor_to_button import move_cursor_to_button
+
+if os.name == 'nt':
+    import win32api
+    import win32con
+    
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -32,7 +39,15 @@ def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_
     end_x, end_y = end_pos
 
     try:
-        if is_wayland():
+        if os.name == 'nt':
+            logger.debug("Using win32api for Windows input (drag simulation)")
+            win32api.SetCursorPos((int(start_x), int(start_y)))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+            time.sleep(0.05)
+            win32api.SetCursorPos((int(end_x), int(end_y)))
+            time.sleep(0.05)
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+        elif is_wayland():
             logger.debug("Using Wayland input method")
             client = WaylandInput()
             client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.001)

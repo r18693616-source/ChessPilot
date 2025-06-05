@@ -50,6 +50,7 @@ Make sure you have:
   - `mss`
   - `Pillow`
   - `pyautogui`
+  - `pywin32`
   - `onnxruntime`
   - `numpy`
   - `tkinter`
