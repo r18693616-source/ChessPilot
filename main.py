@@ -84,6 +84,8 @@ class ChessPilot:
         
         self.set_window_icon()
         self.create_widgets()
+        self.bind_shortcuts()
+
         self.root.bind('<Escape>', self.handle_esc_key)
         logger.info("ChessPilot UI initialized")
 
@@ -241,7 +243,29 @@ class ChessPilot:
 
         logger.debug("Widgets created successfully")
         # self.root.after(50, self.log_button_sizes)
+        
+    def bind_shortcuts(self):
+        """Bind keyboard shortcuts to various actions."""
+        # Color selection shortcuts (always allowed)
+        self.root.bind('<Key-w>', lambda e: self.set_color('w'))
+        self.root.bind('<Key-b>', lambda e: self.set_color('b'))
 
+        # Main control shortcuts (only if color_indicator is set)
+        self.root.bind(
+            '<Key-p>',
+            lambda e: self.process_move_thread() if self.color_indicator else None
+        )
+        self.root.bind(
+            '<Key-a>',
+            lambda e: self.auto_mode_check.invoke() if self.color_indicator else None
+        )
+        self.root.bind(
+            '<Key-k>',
+            lambda e: self.kingside_var.set(not self.kingside_var.get()))
+        self.root.bind(
+            '<Key-q>',
+            lambda e: self.queenside_var.set(not self.queenside_var.get()))
+        
     def update_depth_label(self, value):
         logger.debug(f"Depth slider changed to {value}")
         self.depth_label.config(text=f"Depth: {int(float(value))}")
