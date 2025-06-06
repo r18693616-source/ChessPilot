@@ -61,6 +61,14 @@ def process_move(
                 color_indicator, boxes
             )
             logger.debug(f"FEN extracted: {fen}")
+            
+        except IndexError:
+            # This usually means one of the 'box' entries was too short (e.g. wrong screenshot)
+            logger.error("FEN extraction failed: encountered unexpected box format (IndexError)")
+            root.after(0, lambda: update_status("Error: Bad screenshot"))
+            auto_mode_var.set(False)
+            return
+        
         except ValueError as e:
             logger.error(f"FEN extraction failed: {e}")
             root.after(0, lambda err=e: update_status(f"Error: {str(err)}"))
