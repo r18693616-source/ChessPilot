@@ -240,11 +240,20 @@ class ChessPilot:
         self.btn_play.config(state=tk.DISABLED)
 
         logger.debug("Widgets created successfully")
+        # self.root.after(50, self.log_button_sizes)
 
     def update_depth_label(self, value):
         logger.debug(f"Depth slider changed to {value}")
         self.depth_label.config(text=f"Depth: {int(float(value))}")
         self.root.update_idletasks()
+        
+    # def log_button_sizes(self):
+    #     w_w = self.btn_white.winfo_width()
+    #     w_h = self.btn_white.winfo_height()
+    #     b_w = self.btn_black.winfo_width()
+    #     b_h = self.btn_black.winfo_height()
+    #     logger.debug(f"[SIZE DEBUG] White button size: {w_w}×{w_h}")
+    #     logger.debug(f"[SIZE DEBUG] Black button size: {b_w}×{b_h}")
 
     def create_color_button(self, parent, text, color):
         btn = tk.Button(
