@@ -261,10 +261,10 @@ class ChessPilot:
         )
         self.root.bind(
             '<Key-k>',
-            lambda e: self.kingside_var.set(not self.kingside_var.get()))
+            lambda e: self.kingside_var.set(not self.kingside_var.get()) if self.color_indicator else None)
         self.root.bind(
             '<Key-q>',
-            lambda e: self.queenside_var.set(not self.queenside_var.get()))
+            lambda e: self.queenside_var.set(not self.queenside_var.get()) if self.color_indicator else None)
         
     def update_depth_label(self, value):
         logger.debug(f"Depth slider changed to {value}")
