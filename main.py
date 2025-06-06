@@ -172,7 +172,7 @@ class ChessPilot:
             bg=self.frame_color,
             fg=self.text_color
         ).pack(anchor='w')
-        self.delay_spinbox = tk.Spinbox(
+        self.delay_spinbox = ttk.Spinbox(
             depth_panel,
             from_=0.0,
             to=1.0,
@@ -183,7 +183,14 @@ class ChessPilot:
             state="readonly",
             justify="center"
         )
+        self.style.configure(
+            "TSpinbox",
+            fieldbackground="#F3F1F1",
+            background=self.frame_color,
+            foreground="#000000"
+        )
         self.delay_spinbox.pack(anchor='w')
+
 
         depth_panel.pack(fill='x', pady=10)
         color_panel.pack(padx=30, pady=10, fill='x')
@@ -244,7 +251,7 @@ class ChessPilot:
             parent,
             text=text,
             font=('Segoe UI', 10, 'bold'),
-            width=10,
+            width=9,
             bd=0,
             padx=15,
             pady=8,
