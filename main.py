@@ -1,13 +1,10 @@
-import os
 import threading
 import tkinter as tk
 from tkinter import ttk
-from PIL import Image, ImageTk
 import logging
 import sys
 
 from utils.logging_setup import setup_console_logging
-from utils.resource_path import resource_path
 from utils.chess_resources_manager import extract_stockfish, rename_onnx_model
 
 # Initialize Logging
@@ -28,22 +25,32 @@ if not rename_onnx_model():
     )
     sys.exit(1)
 
-from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
-from engine.chess_notation_to_index import chess_notation_to_index
-from engine.move_cursor_to_button import move_cursor_to_button
-from engine.move_piece import move_piece
-from engine.expend_fen_row import expend_fen_row
-from engine.is_castling_possible import is_castling_possible
-from engine.update_fen_castling_rights import update_fen_castling_rights
-from engine.did_my_piece_move import did_my_piece_move
-from engine.execute_normal_move import execute_normal_move
-from engine.process_move import process_move
-from engine.store_board_positions import store_board_positions
-from engine.verify_move import verify_move
-from engine.auto_move import auto_move_loop
-from engine.get_best_move import get_best_move
-from engine.get_current_fen import get_current_fen
+from engine import (
+    auto_move_loop,
+    capture_screenshot_in_memory,
+    did_my_piece_move,
+    expend_fen_row,
+    get_best_move,
+    get_current_fen,
+    is_castling_possible,
+    move_cursor_to_button,
+    move_piece,
+    process_move,
+    store_board_positions,
+    update_fen_castling_rights,
+    verify_move,
+    chess_notation_to_index,
+    execute_normal_move
+)
 
+from gui.set_window_icon import set_window_icon
+from gui.create_widget import create_widgets
+from gui.shortcuts import handle_esc_key, bind_shortcuts
+from gui.button_and_checkboxes import (
+    color_button,
+    action_button,
+    castling_checkboxes
+)
 
 class ChessPilot:
     def __init__(self, root):
@@ -82,194 +89,27 @@ class ChessPilot:
         self.style.configure("TScale", troughcolor=self.frame_color, background=self.bg_color)
         self.style.configure("TCheckbutton", background=self.bg_color, foreground=self.text_color)
         
-        self.set_window_icon()
-        self.create_widgets()
-        self.bind_shortcuts()
+        set_window_icon(self)
+        create_widgets(self)
+        bind_shortcuts(self)
 
-        self.root.bind('<Escape>', self.handle_esc_key)
-        logger.info("ChessPilot UI initialized")
-
-    def set_window_icon(self):
-        logo_path = resource_path(os.path.join('assets', 'chess-logo.png'))
-        if os.path.exists(logo_path):
-            try:
-                img = Image.open(logo_path)
-                self.icon = ImageTk.PhotoImage(img)
-                self.root.iconphoto(False, self.icon)
-                logger.debug("Window icon set successfully")
-            except Exception as e:
-                logger.warning(f"Failed to set window icon: {e}")
-
-    def handle_esc_key(self, event=None):
-        """Return to color‐selection screen if ESC is pressed."""
-        logger.info("ESC key pressed; returning to color selection")
-        if self.main_frame.winfo_ismapped():
-            self.main_frame.pack_forget()
-            self.color_frame.pack(expand=True, fill=tk.BOTH)
-            self.color_indicator = None
-            self.btn_play.config(state=tk.DISABLED)
-            self.update_status("")
-            self.auto_mode_var.set(False)
-            self.btn_play.config(state=tk.NORMAL)
-
-    def create_widgets(self):
-        # Color selection screen
-        logger.debug("Creating color selection widgets")
-        self.color_frame = tk.Frame(self.root, bg=self.bg_color)
-        header = tk.Label(
-            self.color_frame,
-            text="Chess Pilot",
-            font=('Segoe UI', 18, 'bold'),
-            bg=self.bg_color,
-            fg=self.accent_color
-        )
-        header.pack(pady=(20, 10))
-
-        color_panel = tk.Frame(self.color_frame, bg=self.frame_color, padx=20, pady=15)
-        tk.Label(
-            color_panel,
-            text="Select Your Color:",
-            font=('Segoe UI', 11),
-            bg=self.frame_color,
-            fg=self.text_color
-        ).pack(pady=5)
-
-        btn_frame = tk.Frame(color_panel, bg=self.frame_color)
-        self.btn_white = self.create_color_button(btn_frame, "White", "w")
-        self.btn_black = self.create_color_button(btn_frame, "Black", "b")
-        btn_frame.pack(pady=5)
-
-        depth_panel = tk.Frame(color_panel, bg=self.frame_color)
-        tk.Label(
-            depth_panel,
-            text="Stockfish Depth:",
-            font=('Segoe UI', 10),
-            bg=self.frame_color,
-            fg=self.text_color
-        ).pack(anchor='w')
-
-        self.depth_slider = ttk.Scale(
-            depth_panel,
-            from_=10,
-            to=30,
-            variable=self.depth_var,
-            style="TScale",
-            command=self.update_depth_label
-        )
-        self.depth_slider.pack(fill='x', pady=5)
-
-        self.depth_label = tk.Label(
-            depth_panel,
-            text=f"Depth: {self.depth_var.get()}",
-            font=('Segoe UI', 9),
-            bg=self.frame_color,
-            fg=self.text_color
-        )
-        self.depth_label.pack()
-
-        tk.Label(
-            depth_panel,
-            text="\nAuto Move Screenshot Delay (sec):",
-            font=('Segoe UI', 10),
-            bg=self.frame_color,
-            fg=self.text_color
-        ).pack(anchor='w')
-        self.delay_spinbox = ttk.Spinbox(
-            depth_panel,
-            from_=0.0,
-            to=1.0,
-            increment=0.1,
-            textvariable=self.screenshot_delay_var,
-            format="%.1f",
-            width=5,
-            state="readonly",
-            justify="center"
-        )
-        self.style.configure(
-            "TSpinbox",
-            fieldbackground="#F3F1F1",
-            background=self.frame_color,
-            foreground="#000000"
-        )
-        self.delay_spinbox.pack(anchor='w')
-
-
-        depth_panel.pack(fill='x', pady=10)
-        color_panel.pack(padx=30, pady=10, fill='x')
-        self.color_frame.pack(expand=True, fill=tk.BOTH)
-
-        # Main control screen (after color is chosen)
-        logger.debug("Creating main control widgets")
-        self.main_frame = tk.Frame(self.root, bg=self.bg_color)
-
-        control_panel = tk.Frame(self.main_frame, bg=self.frame_color, padx=20, pady=15)
-        self.btn_play = self.create_action_button(
-            control_panel,
-            "Play Next Move",
-            self.process_move_thread
-        )
-        self.btn_play.pack(fill='x', pady=5)
-
-        self.castling_frame = tk.Frame(control_panel, bg=self.frame_color)
-        self.kingside_var = tk.BooleanVar()
-        self.queenside_var = tk.BooleanVar()
-        self.create_castling_checkboxes()
-        self.castling_frame.pack(pady=10)
-
-        self.auto_mode_check = ttk.Checkbutton(
-            control_panel,
-            text="Auto Next Moves",
-            variable=self.auto_mode_var,
-            command=self.toggle_auto_mode,
-            style="Castling.TCheckbutton"
-        )
-        self.auto_mode_check.pack(pady=5, anchor="center")
-
-        self.status_label = tk.Label(
-            control_panel,
-            text="",
-            font=('Segoe UI', 10),
-            bg=self.frame_color,
-            fg=self.text_color,
-            wraplength=300
-        )
-        self.status_label.pack(fill='x', pady=10)
-
-        control_panel.pack(padx=30, pady=20, fill='both', expand=True)
-        self.main_frame.pack(expand=True, fill=tk.BOTH)
-
-        # Disable "Play Next Move" until a color is chosen
-        self.btn_play.config(state=tk.DISABLED)
-
-        logger.debug("Widgets created successfully")
-        # self.root.after(50, self.log_button_sizes)
-        
-    def bind_shortcuts(self):
-        """Bind keyboard shortcuts to various actions."""
-        # Color selection shortcuts (always allowed)
-        self.root.bind('<Key-w>', lambda e: self.set_color('w'))
-        self.root.bind('<Key-b>', lambda e: self.set_color('b'))
-
-        # Main control shortcuts (only if color_indicator is set)
-        self.root.bind(
-            '<Key-p>',
-            lambda e: self.process_move_thread() if self.color_indicator else None
-        )
-        self.root.bind(
-            '<Key-a>',
-            lambda e: self.auto_mode_check.invoke() if self.color_indicator else None
-        )
-        self.root.bind(
-            '<Key-k>',
-            lambda e: self.kingside_var.set(not self.kingside_var.get()) if self.color_indicator else None)
-        self.root.bind(
-            '<Key-q>',
-            lambda e: self.queenside_var.set(not self.queenside_var.get()) if self.color_indicator else None)
-        
-    def update_depth_label(self, value):
-        logger.debug(f"Depth slider changed to {value}")
-        self.depth_label.config(text=f"Depth: {int(float(value))}")
+        # Log initial window size for debugging
         self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        logger.debug(f"Initial window size: {width}x{height}")
+        
+
+        self.root.bind('<Escape>', self.take_esc_key)
+        self.root.focus_set()
+        logger.info("ChessPilot UI initialized")
+        
+    # Handle ESC key to return to color selection
+    def take_esc_key(self, event=None):
+        if self.color_indicator is not None:
+            handle_esc_key(self, event)
+        else:
+            None
         
     # def log_button_sizes(self):
     #     w_w = self.btn_white.winfo_width()
@@ -280,66 +120,13 @@ class ChessPilot:
     #     logger.debug(f"[SIZE DEBUG] Black button size: {b_w}×{b_h}")
 
     def create_color_button(self, parent, text, color):
-        btn = tk.Button(
-            parent,
-            text=text,
-            font=('Segoe UI', 10, 'bold'),
-            width=9,
-            bd=0,
-            padx=15,
-            pady=8,
-            bg=self.accent_color,
-            fg=self.text_color,
-            activebackground=self.hover_color,
-            activeforeground=self.text_color,
-            command=lambda: self.set_color(color)
-        )
-        btn.pack(side=tk.LEFT, padx=5)
-        return btn
+        return color_button(self, parent, text, color)
 
     def create_action_button(self, parent, text, command):
-        btn = tk.Button(
-            parent,
-            text=text,
-            font=('Segoe UI', 11, 'bold'),
-            bg=self.accent_color,
-            fg=self.text_color,
-            activebackground=self.hover_color,
-            activeforeground=self.text_color,
-            bd=0,
-            pady=10,
-            command=command
-        )
-        btn.pack()
-        return btn
-
+        return action_button(self, parent, text, command)
+        
     def create_castling_checkboxes(self):
-        logger.debug("Creating castling checkboxes")
-        style = ttk.Style()
-        style.configure(
-            "Castling.TCheckbutton",
-            background="#373737",
-            foreground="white",
-            font=("Segoe UI", 10)
-        )
-        style.map(
-            "Castling.TCheckbutton",
-            background=[('active', '#333131'), ('pressed', '#333131')],
-            foreground=[('active', 'white'), ('pressed', 'white')]
-        )
-
-        ttk.Checkbutton(
-            self.castling_frame,
-            text="Kingside Castle",
-            variable=self.kingside_var,
-            style="Castling.TCheckbutton"
-        ).grid(row=0, column=0, padx=10, sticky='w')
-        ttk.Checkbutton(
-            self.castling_frame,
-            text="Queenside Castle",
-            variable=self.queenside_var,
-            style="Castling.TCheckbutton"
-        ).grid(row=1, column=0, padx=10, sticky='w')
+        castling_checkboxes(self)
 
     def update_last_fen_for_color(self, fen: str):
         parts = fen.split()
