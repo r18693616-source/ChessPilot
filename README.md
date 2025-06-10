@@ -144,6 +144,10 @@ sudo pacman -S grim wayland-utils
 
 ---
 
+See [SHORTCUTS.md](SHORTCUTS.md) for a complete list of keyboard shortcuts.
+
+---
+
 ## Tips for Best Results
 
    * Use **100% zoom** in your browser or chess interface.
