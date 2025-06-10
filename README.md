@@ -46,9 +46,9 @@ Grab the latest release from our [GitHub Releases page](https://github.com/OTAKU
 - **Python 3.10+**
 - Install dependencies:
 
-  ```bash
+```bash
   pip install -r requirements.txt
-````
+```
 
 * If `tkinter` is not installed:
 
