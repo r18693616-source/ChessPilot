@@ -144,6 +144,8 @@ sudo pacman -S grim wayland-utils
 
 ---
 
+## Shortcuts
+
 See [SHORTCUTS.md](SHORTCUTS.md) for a complete list of keyboard shortcuts.
 
 ---
