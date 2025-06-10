@@ -3,26 +3,23 @@ import tkinter as tk
 from tkinter import ttk
 import logging
 import sys
+from pathlib import Path
+import os
 
 from utils.logging_setup import setup_console_logging
-from utils.chess_resources_manager import extract_stockfish, rename_onnx_model
+from utils.chess_resources_manager import extract_stockfish, rename_stockfish, rename_onnx_model, setup_resources
 
 # Initialize Logging
 setup_console_logging()
 logger = logging.getLogger("main")
 
-    
-if not extract_stockfish():
-    logger.error(
-        "Stockfish extraction failed. Please check the logs "
-        "and ensure the Stockfish ZIP is downloaded correctly."
-    )
-    sys.exit(1)
-if not rename_onnx_model():
-    logger.error(
-        "ONNX model rename failed. Please check the logs "
-        "and ensure the model is downloaded correctly."
-    )
+script_dir  = Path(__file__).resolve().parent
+project_dir = script_dir.parent           
+
+os.chdir(script_dir)
+
+if not setup_resources(script_dir, project_dir):
+    logger.error("Resource setup failed")
     sys.exit(1)
 
 from engine import (
