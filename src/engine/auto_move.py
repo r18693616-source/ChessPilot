@@ -2,7 +2,7 @@ import time
 import threading
 import logging
 
-from boardreader import get_positions, get_fen_from_position
+from board_detection import get_positions, get_fen_from_position
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.process_move import process_move
 from engine.processing_sync import processing_event   # shared Event

@@ -1,6 +1,6 @@
 import time
 import logging
-from boardreader import get_positions, get_fen_from_position
+from board_detection import get_positions, get_fen_from_position
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.get_current_fen import get_current_fen
 from engine.chess_notation_to_index import chess_notation_to_index

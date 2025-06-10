@@ -1,4 +1,4 @@
-from .getpositions import get_positions
+from .get_positions import get_positions
 
 def get_fen_from_position(color, boxes):
     # Find the chessboard (class_id 12.0)

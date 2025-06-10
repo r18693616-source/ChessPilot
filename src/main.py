@@ -7,7 +7,7 @@ from pathlib import Path
 import os
 
 from utils.logging_setup import setup_console_logging
-from utils.chess_resources_manager import extract_stockfish, rename_stockfish, rename_onnx_model, setup_resources
+from utils.chess_resources_manager import setup_resources
 
 # Initialize Logging
 setup_console_logging()

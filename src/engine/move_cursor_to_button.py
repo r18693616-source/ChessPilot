@@ -1,5 +1,5 @@
 import pyautogui
-from input_capture.wayland import WaylandInput
+from wayland_capture.wayland import WaylandInput
 from tkinter import messagebox
 import logging
 import os

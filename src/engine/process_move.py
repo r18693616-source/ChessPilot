@@ -1,7 +1,7 @@
 import logging
 import tkinter as tk
 import time
-from boardreader import get_positions, get_fen_from_position
+from board_detection import get_positions, get_fen_from_position
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 from engine.get_best_move import get_best_move
 from engine.is_castling_possible import is_castling_possible

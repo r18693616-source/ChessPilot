@@ -4,7 +4,7 @@ from tkinter import messagebox
 import os
 import time
 from .is_wayland import is_wayland
-from input_capture.wayland import WaylandInput
+from wayland_capture.wayland import WaylandInput
 from engine.chess_notation_to_index import chess_notation_to_index
 from engine.move_cursor_to_button import move_cursor_to_button
 

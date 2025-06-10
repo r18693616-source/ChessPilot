@@ -1,4 +1,4 @@
-from boardreader import get_positions, get_fen_from_position
+from board_detection import get_positions, get_fen_from_position
 from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
 import logging
 
