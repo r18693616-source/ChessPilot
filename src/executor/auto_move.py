@@ -3,9 +3,9 @@ import threading
 import logging
 
 from board_detection import get_positions, get_fen_from_position
-from engine.capture_screenshot_in_memory import capture_screenshot_in_memory
-from engine.process_move import process_move
-from engine.processing_sync import processing_event   # shared Event
+from executor.capture_screenshot_in_memory import capture_screenshot_in_memory
+from executor.process_move import process_move
+from executor.processing_sync import processing_event
 
 # Logger setup
 logger = logging.getLogger(__name__)

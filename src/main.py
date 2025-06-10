@@ -22,7 +22,7 @@ if not setup_resources(script_dir, project_dir):
     logger.error("Resource setup failed")
     sys.exit(1)
 
-from engine import (
+from executor import (
     auto_move_loop,
     capture_screenshot_in_memory,
     did_my_piece_move,
