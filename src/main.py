@@ -105,8 +105,6 @@ class ChessPilot:
     def take_esc_key(self, event=None):
         if self.color_indicator is not None:
             handle_esc_key(self, event)
-        else:
-            None
         
     # def log_button_sizes(self):
     #     w_w = self.btn_white.winfo_width()

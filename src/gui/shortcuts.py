@@ -5,7 +5,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 def handle_esc_key(app, event=None):
-    app.root.bind('<Escape>', handle_esc_key(app))
     """Return to color‐selection screen if ESC is pressed."""
     logger.info("ESC key pressed; returning to color selection")
     if app.main_frame.winfo_ismapped():
