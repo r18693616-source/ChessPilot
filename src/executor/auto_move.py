@@ -110,8 +110,8 @@ def auto_move_loop(
             logger.debug("Capturing screenshot for auto-move…")
             screenshot = capture_screenshot_in_memory(root, auto_mode_var)
             if not screenshot:
-                logger.warning("Screenshot returned None; retrying in 0.2s…")
-                time.sleep(0.2)
+                logger.warning("Screenshot returned None; retrying in 0.02s…")
+                time.sleep(0.02)
                 continue
 
             boxes = get_positions(screenshot)
@@ -138,22 +138,22 @@ def auto_move_loop(
                     last_fen_by_color[opp_color] = placement
                 else:
                     logger.debug("Opponent placement unchanged.")
-                time.sleep(0.2)
+                time.sleep(0.02)
                 continue
 
             if active == color_indicator:
                 if opp_color not in last_fen_by_color:
                     logger.debug(
-                        "Our turn detected but no previous opponent-FEN known; sleeping 0.2s…"
+                        "Our turn detected but no previous opponent-FEN known; sleeping 0.02s…"
                     )
-                    time.sleep(0.2)
+                    time.sleep(0.02)
                     continue
 
                 if placement == last_fen_by_color[opp_color]:
                     logger.debug(
-                        "It's our turn but opponent didn’t move; sleeping 0.2s…"
+                        "It's our turn but opponent didn’t move; sleeping 0.02s…"
                     )
-                    time.sleep(0.2)
+                    time.sleep(0.02)
                     continue
 
                 last_fen_by_color[opp_color] = placement
