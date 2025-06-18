@@ -76,15 +76,17 @@ def auto_move_loop(
         if seed_img:
             boxes = get_positions(seed_img)
             if boxes:
-                _, _, _, seed_fen = get_fen_from_position(color_indicator, boxes)
-                parts = seed_fen.split()
-                if len(parts) >= 2:
-                    placement = parts[0]
-                    last_fen_by_color['w'] = placement
-                    last_fen_by_color['b'] = placement
-                    logger.info(f"Seeded placement = {placement}")
-                else:
-                    logger.warning("Seed FEN malformed; skipping initial seed")
+                result = get_fen_from_position(color_indicator, boxes)
+                if result is not None:
+                    _, _, _, seed_fen = result
+                    parts = seed_fen.split()
+                    if len(parts) >= 2:
+                        placement = parts[0]
+                        last_fen_by_color['w'] = placement
+                        last_fen_by_color['b'] = placement
+                        logger.info(f"Seeded placement = {placement}")
+                    else:
+                        logger.warning("Seed FEN malformed; skipping initial seed")
             else:
                 logger.warning("No board detected in seed capture")
         else:

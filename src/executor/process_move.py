@@ -57,9 +57,15 @@ def process_move(
             return
 
         try:
-            chessboard_x, chessboard_y, square_size, fen = get_fen_from_position(
-                color_indicator, boxes
-            )
+            result = get_fen_from_position(color_indicator, boxes)
+            
+            if result is None:
+                logger.error("FEN extraction failed: get_fen_from_position returned None")
+                root.after(0, lambda: update_status("Error: Could not detect board/FEN"))
+                auto_mode_var.set(False)
+                return
+
+            chessboard_x, chessboard_y, square_size, fen = result
             logger.debug(f"FEN extracted: {fen}")
             
         except IndexError:
