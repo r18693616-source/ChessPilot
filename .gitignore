@@ -70,4 +70,18 @@ chess_detection.onnx
 *.zip
 wayland-info
 grim
+
+# AUR / AppImage packaging
+.SRCINFO
+chesspilot.desktop
+chesspilot.png
+ChessPilot-*.AppImage
+
+# AppImage extraction
+*.AppDir/
 *.AppDir
+
+# Editor/patch backup files
+*.orig
+*.rej
+*~
