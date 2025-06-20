@@ -67,7 +67,7 @@ def bind_shortcuts(app):
     app.root.bind(
         '<Left>',
         lambda e: (
-            app.depth_var.set(max(1, app.depth_var.get() - 1)),
+            app.depth_var.set(max(10, app.depth_var.get() - 1)),
             app.update_status(f"Depth: {app.depth_var.get()}")
         ) if app.color_indicator is None else None
     )
