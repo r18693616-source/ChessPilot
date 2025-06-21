@@ -46,7 +46,11 @@ def extract_stockfish():
             return True
 
     target_name = "stockfish.exe" if os.name == "nt" else "stockfish"
-    cwd = Path.cwd()
+    if getattr(sys, "frozen", False):
+        # one‑file bundle: look in the folder containing the .exe
+        cwd = Path(sys.executable).parent
+    else:
+        cwd = Path.cwd()
     final_path = cwd / target_name
 
     system_path = which(target_name)
@@ -105,7 +109,11 @@ def rename_stockfish():
     Ensures stockfish.zip or the raw stockfish binary lives in cwd.
     Searches cwd first, then parent dir, and moves it into cwd if found.
     """
-    cwd = Path.cwd()
+    if getattr(sys, "frozen", False):
+        cwd = Path(sys.executable).parent
+    else:
+        cwd = Path.cwd()
+
     # possible names
     zip_name = "stockfish.zip" if os.name == "nt" else "stockfish"
     bin_name = "stockfish.exe" if os.name == "nt" else "stockfish"
