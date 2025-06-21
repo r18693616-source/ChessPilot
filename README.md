@@ -1,10 +1,25 @@
 <p align="center">
   <img src="assets/chess-logo.png" alt="ChessPilot Logo" width="150" />
 </p>
+<hr />
 
-# ChessPilot
+<h1 align="center">ChessPilot</h1>
 
-A **fully offline** chess position evaluator and autoplayer for Windows and Linux, powered by ONNX and Stockfish.
+<p align="center">
+  A fully offline chess position evaluator and autoplayer for Windows and Linux, powered by ONNX and Stockfish.
+</p>
+
+<p align="center">
+<a href="https://img.shields.io/github/license/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/license/OTAKUWeBer/ChessPilot?style=for-the-badge&color=F48041"></a>
+<a href="https://img.shields.io/github/v/release/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/v/release/OTAKUWeBer/ChessPilot?style=for-the-badge&color=0E80C0"></a>
+<a href="https://img.shields.io/codefactor/grade/github/OTAKUWeBer/ChessPilot?style=for-the-badge&color=03A363"><img src="https://img.shields.io/codefactor/grade/github/OTAKUWeBer/ChessPilot?style=for-the-badge&color=03A363"></a>
+<!-- <a href="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge"><img src="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge&color=CAF979"></a> -->
+<a href="https://img.shields.io/github/issues/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/issues/OTAKUWeBer/ChessPilot?style=for-the-badge&color=CE5842"></a>
+<br>
+<a href="https://img.shields.io/badge/Made_For-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white"><img src="https://img.shields.io/badge/Made_For-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white"></a>
+<a href="https://img.shields.io/badge/Made_For-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white"><img src="https://img.shields.io/badge/Made_For-Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white"></a>
+
+<br>
 
 ---
 
@@ -21,12 +36,6 @@ A **fully offline** chess position evaluator and autoplayer for Windows and Linu
 * **ESC Shortcut**: Press **ESC** to reselect playing color at any time.
 * **Cross-Platform GUI**: Built with Tkinter for simplicity.
 * **100% Offline**: No external API calls—your data stays local.
-
----
-
-## 🏷️ Badges
-
-![CodeFactor Quality](https://www.codefactor.io/repository/github/otakuweber/chesspilot/badge)
 
 ---
 
