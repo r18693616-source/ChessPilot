@@ -13,7 +13,7 @@
 <a href="https://img.shields.io/github/license/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/license/OTAKUWeBer/ChessPilot?style=for-the-badge&color=F48041"></a>
 <a href="https://img.shields.io/github/v/release/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/v/release/OTAKUWeBer/ChessPilot?style=for-the-badge&color=0E80C0"></a>
 <a href="https://img.shields.io/codefactor/grade/github/OTAKUWeBer/ChessPilot?style=for-the-badge&color=03A363"><img src="https://img.shields.io/codefactor/grade/github/OTAKUWeBer/ChessPilot?style=for-the-badge&color=03A363"></a>
-<!-- <a href="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge"><img src="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge&color=CAF979"></a> -->
+<a href="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge"><img src="https://img.shields.io/github/downloads/OTAKUWeBer/ChessPilot/total.svg?style=for-the-badge&color=CAF979"></a>
 <a href="https://img.shields.io/github/issues/OTAKUWeBer/ChessPilot?style=for-the-badge"><img src="https://img.shields.io/github/issues/OTAKUWeBer/ChessPilot?style=for-the-badge&color=CE5842"></a>
 <br>
 <a href="https://img.shields.io/badge/Made_For-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white"><img src="https://img.shields.io/badge/Made_For-Linux-FCC624?style=for-the-badge&logo=linux&logoColor=white"></a>
@@ -43,6 +43,17 @@
 
 👉 [Download the latest release](https://github.com/OTAKUWeBer/ChessPilot/releases/latest)
 
+**Arch Linux Installation**
+
+ChessPilot is also available on the Arch User Repository (AUR). You can install it using your preferred AUR helper:
+
+```bash
+# Using yay
+yay -S chesspilot --skipreview
+# Using paru
+paru -S chesspilot --skipreview
+```
+
 ### Included in Binary Releases
 
 The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **AppImage**, **EXE**, and **DEB** builds. You only need to provide **Stockfish** for your CPU architecture.
@@ -54,8 +65,8 @@ The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **A
 
   > Place the `stockfish` binary alongside the ChessPilot executable or in the `src/` directory.
 
-  > **Windows Note**: You may also need the Microsoft Visual C++ Redistributable.  
-  [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+  > **Windows Note**: You may also need the Microsoft Visual C++ Redistributable.
+  > [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
   > **Linux Users**: You can install Stockfish using your package manager. For example:
   ```bash
