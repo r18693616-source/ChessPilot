@@ -41,34 +41,41 @@
 
 ## 📦 Download
 
-Get the latest release from the [GitHub Releases page](https://github.com/OTAKUWeBer/ChessPilot/releases/latest).
+👉 [Download the latest release](https://github.com/OTAKUWeBer/ChessPilot/releases/latest)
 
-### Required Assets
+### Included in Binary Releases
 
-1. **ONNX Model** (`chess_detectionv0.0.4.onnx`)
+The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **AppImage**, **EXE**, and **DEB** builds. You only need to provide **Stockfish** for your CPU architecture.
 
-   * Download: [https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess\_detectionv0.0.4.onnx](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx)
+### Required (Binary Users):
 
-   > **Note (Windows)**: You may need the Microsoft Visual C++ Redistributable. Get it here: [https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+- **Stockfish Engine**  
+  Download from [https://stockfishchess.org/download/](https://stockfishchess.org/download/)
 
-2. **Stockfish Engine**
+  > Place the `stockfish` binary alongside the ChessPilot executable or in the `src/` directory.
 
-   * Download: [https://stockfishchess.org/download/](https://stockfishchess.org/download/)
+  > **Windows Note**: You may also need the Microsoft Visual C++ Redistributable.  
+  [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
-   > **Note**: Place both files in the **project root** (alongside `src/`) or inside `src/`.
+  > **Linux Users**: You can install Stockfish using your package manager. For example:
+  ```bash
+  sudo pacman -S stockfish       # Arch / Manjaro
+  sudo apt install stockfish     # Debian / Ubuntu
+  sudo dnf install stockfish     # Fedora
+  yay -S stockfish               # AUR (Arch-based)
+  ```
 
 ---
 
-## ⚙️ Prerequisites
+## ⚙️ Prerequisites (For Source Builds)
 
-* **Python** ≥ 3.10
-* **Tkinter** (if missing on Linux):
+If you're running from source, you need:
 
-  ```bash
-  sudo apt install python3-tk      # Ubuntu / Debian
-  sudo pacman -S tk                # Arch Linux
-  sudo dnf install python3-tkinter # Fedora
-  ```
+```bash
+sudo apt install python3-tk      # Ubuntu / Debian
+sudo pacman -S tk                # Arch Linux
+sudo dnf install python3-tkinter # Fedora
+```
 
 Install Python dependencies:
 
@@ -76,28 +83,23 @@ Install Python dependencies:
 pip install -r requirements.txt
 ```
 
-* **Wayland Screenshot Tools** (Hyprland, Sway): Required for capturing board under Wayland;
+* **Assets Needed (Source only)**:
 
-  ```bash
-  sudo pacman -S grim wayland-utils
-  ```
+  1. [chess\_detectionv0.0.4.onnx](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx)
+  2. [Stockfish Engine](https://stockfishchess.org/download/)
+
+> Place both in the root or `src/` directory.
 
 ---
 
-## 🛠️ Installation
+## 🛠️ Installation (From Source)
 
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/OTAKUWeBer/ChessPilot.git
-   cd ChessPilot
-   ```
-2. Install dependencies:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Add the ONNX model and Stockfish binary as described above.
+```bash
+git clone https://github.com/OTAKUWeBer/ChessPilot.git
+cd ChessPilot
+pip install -r requirements.txt
+# Add Stockfish and ONNX model if not using binary
+```
 
 ---
 
@@ -128,7 +130,7 @@ python src/main.py
 
 ## ⌨️ Shortcuts
 
-See [SHORTCUTS.md](SHORTCUTS.md) for a full list.
+See [SHORTCUTS.md](SHORTCUTS.md) for a full list of hotkeys and actions.
 
 ---
 
