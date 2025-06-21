@@ -52,7 +52,7 @@ def execute_normal_move(
 
         try:
             start_pos = board_positions[start_idx]
-            end_pos   = board_positions[end_idx]
+            end_pos = board_positions[end_idx]
         except KeyError:
             logger.warning(f"Start or end position not found in board_positions: {start_idx}, {end_idx}")
             time.sleep(0.1)

@@ -13,8 +13,8 @@ from utils.chess_resources_manager import setup_resources
 setup_console_logging()
 logger = logging.getLogger("main")
 
-script_dir  = Path(__file__).resolve().parent
-project_dir = script_dir.parent           
+script_dir = Path(__file__).resolve().parent
+project_dir = script_dir.parent
 
 os.chdir(script_dir)
 

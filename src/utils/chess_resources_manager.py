@@ -190,9 +190,9 @@ def setup_resources(script_dir: Path, project_dir: Path) -> bool:
 
     # 2) move any ZIP/binary from root into src
     root_zip = project_dir / "stockfish.zip"
-    src_zip  = script_dir  / "stockfish.zip"
+    src_zip = script_dir / "stockfish.zip"
     root_bin = project_dir / "stockfish.exe"
-    src_bin  = script_dir  / "stockfish.exe"
+    src_bin = script_dir / "stockfish.exe"
 
     if root_zip.exists() and not src_zip.exists():
         shutil.move(str(root_zip), str(src_zip))
@@ -203,7 +203,7 @@ def setup_resources(script_dir: Path, project_dir: Path) -> bool:
 
     # 3) ONNX model move & rename
     root_onnx = project_dir / "chess_detection.onnx"
-    src_onnx  = script_dir  / "chess_detection.onnx"
+    src_onnx = script_dir / "chess_detection.onnx"
     if root_onnx.exists() and not src_onnx.exists():
         shutil.move(str(root_onnx), str(src_onnx))
         logger.info(f"Copied ONNX model into src/: {src_onnx}")
