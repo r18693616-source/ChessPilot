@@ -53,7 +53,7 @@ class ChessPilot:
     def __init__(self, root):
         logger.info("Initializing ChessPilot application")
         self.root = root
-        self.root.title("Chess Pilot")
+        self.root.title("ChessPilot")
         self.root.geometry("350x350")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)

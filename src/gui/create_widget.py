@@ -12,7 +12,7 @@ def create_widgets(app):
     app.color_frame = tk.Frame(app.root, bg=app.bg_color)
     header = tk.Label(
         app.color_frame,
-        text="Chess Pilot",
+        text="ChessPilot",
         font=('Segoe UI', 18, 'bold'),
         bg=app.bg_color,
         fg=app.accent_color
