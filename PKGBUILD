@@ -2,38 +2,33 @@
 pkgname=chesspilot
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="ChessPilot chess‑automation GUI (AppImage)"
+pkgdesc="A fully offline chess autoplayer and position evaluator powered by ONNX and Stockfish"
 arch=('x86_64')
 url="https://github.com/OTAKUWeBer/ChessPilot"
 license=('MIT')
-
-# Runtime dependencies: FUSE for mounting AppImage, plus Stockfish engine
-depends=('fuse2' 'stockfish')
-
-# Upstream AppImage and local desktop/icon files
+depends=('stockfish' 'tk')
 source=(
-  "https://github.com/OTAKUWeBer/ChessPilot/releases/download/v${pkgver}/ChessPilot-${pkgver}.AppImage"
+  "https://github.com/OTAKUWeBer/ChessPilot/releases/download/v${pkgver}/ChessPilot-${pkgver}-linux-x86_64"
   "chesspilot.desktop"
-  "chesspilot.png"
+  "assets/chesspilot.png"
 )
-
-# Checksums: first for the AppImage, then desktop file, then icon
+noextract=("ChessPilot-${pkgver}-linux-x86_64")
 sha256sums=(
-  '<APPIMAGE_SHA256>'   # e.g. 0123456789abcdef...
-  'SKIP'                # you can SKIP the small desktop file if you prefer
-  '<ICON_SHA256>'       # e.g. fedcba9876543210...
+  '489b9a35147492f8dafa68d3694e7fc6dca15d7017b842ce040ae7b98362d065'  # Raw binary
+  'SKIP'  # Desktop entry
+  '8d304ed8f25461f6fc69d0144e0de68403f239b8583b5120fbb5f859254c74d9'  # Icon hash (replace if needed)
 )
 
 package() {
-  # Install the AppImage as an executable wrapper
-  install -Dm755 "${srcdir}/ChessPilot-${pkgver}.AppImage" \
-                  "${pkgdir}/usr/bin/chesspilot"
+  install -Dm755 "$srcdir/ChessPilot-${pkgver}-linux-x86_64" \
+    "$pkgdir/usr/bin/chesspilot"
 
-  # Install the .desktop entry
-  install -Dm644 "${srcdir}/chesspilot.desktop" \
-                  "${pkgdir}/usr/share/applications/chesspilot.desktop"
+  install -Dm644 "$srcdir/chesspilot.desktop" \
+    "$pkgdir/usr/share/applications/chesspilot.desktop"
 
-  # Install the application icon
-  install -Dm644 "${srcdir}/chesspilot.png" \
-                  "${pkgdir}/usr/share/icons/hicolor/256x256/apps/chesspilot.png"
+  install -Dm644 "$srcdir/assets/chesspilot.png" \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/chesspilot.png"
+
+  install -Dm644 "$srcdir/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

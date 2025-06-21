@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/chess-logo.png" alt="ChessPilot Logo" width="150" />
+  <img src="assets/chesspilot.png" alt="ChessPilot Logo" width="150" />
 </p>
 <hr />
 

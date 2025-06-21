@@ -7,7 +7,7 @@ from utils.resource_path import resource_path
 logger = logging.getLogger(__name__)
 
 def set_window_icon(app):
-    logo_path = resource_path(os.path.join('assets', 'chess-logo.png'))
+    logo_path = resource_path(os.path.join('assets', 'chesspilot.png'))
     if os.path.exists(logo_path):
         try:
             img = Image.open(logo_path)
