@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import logging
 from tkinter import messagebox
+from utils.resource_path import resource_path
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -12,13 +13,7 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
     try:
         logger.info("Getting best move from Stockfish")
         
-        if os.name == "nt":
-            stockfish_path = "stockfish.exe"
-        else:
-            stockfish_path = "stockfish"
-            if shutil.which(stockfish_path) is None:
-                stockfish_path = "./stockfish"
-        
+        stockfish_path = resource_path("stockfish.exe" if os.name == "nt" else "stockfish")
         if not os.path.exists(stockfish_path) and shutil.which(stockfish_path) is None:
             raise FileNotFoundError(f"Stockfish not found at {stockfish_path}")
         
