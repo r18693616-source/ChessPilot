@@ -10,7 +10,7 @@ depends=('stockfish' 'tk')
 source=(
   "https://github.com/OTAKUWeBer/ChessPilot/releases/download/v${pkgver}/ChessPilot-${pkgver}-linux-x86_64"
   "chesspilot.desktop"
-  "assets/chesspilot.png"
+  "assets/logo.png"
 )
 noextract=("ChessPilot-${pkgver}-linux-x86_64")
 sha256sums=(
@@ -26,8 +26,8 @@ package() {
   install -Dm644 "$srcdir/chesspilot.desktop" \
     "$pkgdir/usr/share/applications/chesspilot.desktop"
 
-  install -Dm644 "$srcdir/assets/chesspilot.png" \
-    "$pkgdir/usr/share/icons/hicolor/256x256/apps/chesspilot.png"
+  install -Dm644 "$srcdir/assets/logo.png" \
+    "$pkgdir/usr/share/icons/hicolor/256x256/apps/logo.png"
 
   install -Dm644 "$srcdir/LICENSE" \
     "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
