@@ -14,6 +14,13 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
         logger.info("Getting best move from Stockfish")
         
         stockfish_path = resource_path("stockfish.exe" if os.name == "nt" else "stockfish")
+        
+        if os.name != "nt" and not os.path.exists(stockfish_path):
+            sys_stock = shutil.which("stockfish")
+            if sys_stock:
+                logger.debug(f"Falling back to system Stockfish at {sys_stock}")
+                stockfish_path = sys_stock
+                
         if not os.path.exists(stockfish_path) and shutil.which(stockfish_path) is None:
             raise FileNotFoundError(f"Stockfish not found at {stockfish_path}")
         
