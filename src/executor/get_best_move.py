@@ -3,11 +3,60 @@ import subprocess
 import shutil
 import logging
 from tkinter import messagebox
+import sys
 from utils.resource_path import resource_path
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+def get_root_dir():
+    # When bundled by PyInstaller, __file__ doesn't point to the EXE location
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+
+CONFIG_FILE = os.path.join(get_root_dir(), "engine_config.txt")
+
+
+def load_engine_config(stockfish_proc, config_path=CONFIG_FILE):
+    """Loads Stockfish engine settings from a config file. Creates default with comments if missing."""
+    
+    # If config does not exist, create it with full user-friendly comments
+    if not os.path.exists(config_path):
+        with open(config_path, "w") as f:
+            f.write("# ================================\n")
+            f.write("# ChessPilot Engine Configuration\n")
+            f.write("# ================================\n")
+            f.write("# You can edit these values to change engine behavior.\n")
+            f.write("# Be sure to restart the app after editing this file.\n\n")
+
+            f.write("# Memory used in MB (64–1024+ recommended depending on your system)\n")
+            f.write("setoption name Hash value 512\n\n")
+
+            f.write("# CPU threads to use (1–8 usually; match your CPU core count)\n")
+            f.write("setoption name Threads value 2\n")
+        
+        logger.info(f"Created default config file at {config_path}")
+        return
+
+    with open(config_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            try:
+                logger.info(f"Applying engine option: {line}")
+                stockfish_proc.stdin.write(f"{line}\n")
+            except Exception as e:
+                logger.warning(f"Failed to apply config line '{line}': {e}")
+
+    stockfish_proc.stdin.write("isready\n")
+    stockfish_proc.stdin.flush()
+    while True:
+        if stockfish_proc.stdout.readline().strip() == "readyok":
+            break
 
 def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
     try:
@@ -35,6 +84,9 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
             text=True,
             creationflags=flags
         )
+
+        # Load custom engine config
+        load_engine_config(stockfish)
         
         stockfish.stdin.write(f"position fen {fen}\n")
         stockfish.stdin.write(f"go depth {depth_var}\n")
