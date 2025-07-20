@@ -22,27 +22,31 @@ def get_root_dir():
 
 CONFIG_FILE = os.path.join(get_root_dir(), "engine_config.txt")
 
+def create_default_config(config_path):
+    """Creates a default config file with user-friendly comments."""
+    with open(config_path, "w") as f:
+        f.write("# ================================\n")
+        f.write("# ChessPilot Engine Configuration\n")
+        f.write("# ================================\n")
+        f.write("# You can edit these values to change engine behavior.\n")
+        f.write("# Be sure to restart the app after editing this file.\n\n")
+
+        f.write("# Memory used in MB (64-1024+ recommended depending on your system)\n")
+        f.write("setoption name Hash value 512\n\n")
+
+        f.write("# CPU threads to use (1-8 usually; match your CPU core count)\n")
+        f.write("setoption name Threads value 2\n")
+    
+    logger.info(f"Created default config file at {config_path}")
+
 def load_engine_config(stockfish_proc, config_path=CONFIG_FILE):
     """Loads Stockfish engine settings from a config file. Creates default with comments if missing."""
     
-    # If config does not exist, create it with full user-friendly comments
+    # Always check if config exists and create if missing
     if not os.path.exists(config_path):
-        with open(config_path, "w") as f:
-            f.write("# ================================\n")
-            f.write("# ChessPilot Engine Configuration\n")
-            f.write("# ================================\n")
-            f.write("# You can edit these values to change engine behavior.\n")
-            f.write("# Be sure to restart the app after editing this file.\n\n")
+        create_default_config(config_path)
 
-            f.write("# Memory used in MB (64–1024+ recommended depending on your system)\n")
-            f.write("setoption name Hash value 512\n\n")
-
-            f.write("# CPU threads to use (1–8 usually; match your CPU core count)\n")
-            f.write("setoption name Threads value 2\n")
-        
-        logger.info(f"Created default config file at {config_path}")
-        return
-
+    # Load and apply the config
     with open(config_path, "r") as f:
         for line in f:
             line = line.strip()
@@ -59,6 +63,14 @@ def load_engine_config(stockfish_proc, config_path=CONFIG_FILE):
     while True:
         if stockfish_proc.stdout.readline().strip() == "readyok":
             break
+
+def ensure_config_exists():
+    """Ensures the config file exists, creating it if necessary."""
+    if not os.path.exists(CONFIG_FILE):
+        logger.warning("Config file missing during gameplay, regenerating...")
+        create_default_config(CONFIG_FILE)
+        return True  # Indicates config was recreated
+    return False  # Config already exists
 
 def _initialize_stockfish():
     """Initialize a persistent Stockfish process."""
@@ -117,15 +129,38 @@ def cleanup_stockfish():
             _stockfish_process = None
             logger.info("Stockfish process cleaned up")
 
+def initialize_stockfish_at_startup():
+    """Initialize Stockfish at application startup."""
+    try:
+        logger.info("Initializing Stockfish at application startup...")
+        stockfish_process = _initialize_stockfish()
+        if stockfish_process:
+            logger.info("Stockfish successfully initialized with config settings")
+            return True
+        else:
+            logger.error("Failed to initialize Stockfish at startup")
+            return False
+    except Exception as e:
+        logger.error(f"Error initializing Stockfish at startup: {e}")
+        return False
+
 def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
     try:
         logger.info("Getting best move from Stockfish")
+        
+        # Check if config file exists before getting the move
+        config_recreated = ensure_config_exists()
         
         # Use persistent Stockfish process
         stockfish = _initialize_stockfish()
         
         if stockfish is None:
             raise RuntimeError("Failed to initialize Stockfish")
+        
+        # If config was recreated, we need to reload it into the existing process
+        if config_recreated and stockfish:
+            logger.info("Reloading config into existing Stockfish process")
+            load_engine_config(stockfish)
         
         stockfish.stdin.write(f"position fen {fen}\n")
         stockfish.stdin.write(f"go depth {depth_var}\n")

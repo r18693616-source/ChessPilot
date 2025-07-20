@@ -29,6 +29,7 @@ from executor import (
     expend_fen_row,
     get_best_move,
     cleanup_stockfish,
+    initialize_stockfish_at_startup,
     get_current_fen,
     is_castling_possible,
     move_cursor_to_button,
@@ -102,6 +103,10 @@ class ChessPilot:
         self.root.bind('<Escape>', self.take_esc_key)
         self.root.focus_set()
         logger.info("ChessPilot UI initialized")
+        
+        # Initialize Stockfish at startup
+        if not initialize_stockfish_at_startup():
+            logger.warning("Stockfish initialization failed at startup - will retry when needed")
         
     def on_closing(self):
         """Handle application closing."""

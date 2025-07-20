@@ -99,8 +99,8 @@ def auto_move_loop(
         logger.debug("Loop tick")
 
         if processing_event.is_set():
-            logger.debug("Currently processing a move; sleeping 0.5s…")
-            time.sleep(0.5)
+            logger.debug("Currently processing a move; sleeping 0.1s…")
+            time.sleep(0.1)
             continue
 
         if not board_positions:
