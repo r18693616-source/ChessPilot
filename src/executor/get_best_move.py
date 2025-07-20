@@ -32,10 +32,10 @@ def create_default_config(config_path):
         f.write("# Be sure to restart the app after editing this file.\n\n")
 
         f.write("# Memory used in MB (64-1024+ recommended depending on your system)\n")
-        f.write("setoption name Hash value 512\n\n")
+        f.write("setoption name Hash value 1024\n\n")
 
         f.write("# CPU threads to use (1-8 usually; match your CPU core count)\n")
-        f.write("setoption name Threads value 2\n")
+        f.write("setoption name Threads value 4\n")
     
     logger.info(f"Created default config file at {config_path}")
 
