@@ -63,7 +63,7 @@ The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **A
 - **Stockfish Engine**  
   Download from [https://stockfishchess.org/download/](https://stockfishchess.org/download/)
 
-  > Place the `stockfish` binary alongside the ChessPilot executable or in the `src/` directory.
+  > Place the `stockfish` zip alongside the ChessPilot executable or in the `src/` directory.
 
   > **Windows Note**: You may also need the Microsoft Visual C++ Redistributable.
   > [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
@@ -75,6 +75,30 @@ The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **A
   sudo dnf install stockfish     # Fedora
   yay -S stockfish               # AUR (Arch-based)
   ```
+
+---
+
+## 🔧 Engine Configuration (v1.0.1)
+
+You can now fine‑tune Stockfish’s performance without touching any code.  
+Simply place an `engine_config.txt` file next to the ChessPilot executable:
+
+```ini
+# ================================
+# ChessPilot Engine Configuration
+# ================================
+# Memory used in MB (64–1024+ recommended)
+setoption name Hash value 512
+
+# CPU threads to use (1–8; match your CPU core count)
+setoption name Threads value 2
+````
+
+1. Edit `Hash` to adjust how much RAM (in MB) Stockfish uses.
+2. Edit `Threads` to match your CPU cores.
+3. Save and restart ChessPilot to apply the new settings.
+
+> ⚡ Get optimal multi‑core & memory tuning out‑of‑the‑box!
 
 ---
 
