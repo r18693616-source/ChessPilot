@@ -145,83 +145,160 @@ def initialize_stockfish_at_startup():
         return False
 
 def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
+    """
+    Main function to get the best move from Stockfish.
+    Complexity reduced by breaking into smaller functions.
+    """
     try:
         logger.info("Getting best move from Stockfish")
         
-        # Check if config file exists before getting the move
-        config_recreated = ensure_config_exists()
-        
-        # Use persistent Stockfish process
-        stockfish = _initialize_stockfish()
-        
+        stockfish = _setup_stockfish_engine()
         if stockfish is None:
-            raise RuntimeError("Failed to initialize Stockfish")
+            return _handle_stockfish_failure("Failed to initialize Stockfish", root, auto_mode_var)
         
-        # If config was recreated, we need to reload it into the existing process
-        if config_recreated and stockfish:
-            logger.info("Reloading config into existing Stockfish process")
-            load_engine_config(stockfish)
-        
-        stockfish.stdin.write(f"position fen {fen}\n")
-        stockfish.stdin.write(f"go depth {depth_var}\n")
-        stockfish.stdin.flush()
-        
-        best_move = None
-        mate_flag = False
-        
-        while True:
-            line = stockfish.stdout.readline()
-            if not line:
-                break
-            logger.debug(f"Engine output: {line.strip()}")
-            if "score mate" in line:
-                try:
-                    parts = line.split("score mate")
-                    mate_val = int(parts[1].split()[0])
-                    if abs(mate_val) == 1:
-                        mate_flag = True
-                        logger.info("Mate in 1 detected")
-                except (IndexError, ValueError):
-                    logger.warning("Could not parse mate score")
-            if line.startswith("bestmove"):
-                best_move = line.strip().split()[1]
-                logger.info(f"Best move received: {best_move}")
-                break
-
-        # If Stockfish did not return a best move, inform the user
+        best_move, mate_flag = _get_move_from_engine(stockfish, depth_var, fen)
         if best_move is None:
-            error_msg = "Stockfish did not respond. Please download the correct version according to your CPU architecture."
-            logger.error(error_msg)
-            if root:
-                root.after(0, lambda: messagebox.showerror("Error", error_msg))
-            if auto_mode_var:
-                auto_mode_var.set(False)
-            return None, None, False
-
-        updated_fen = None
-        if best_move:
-            stockfish.stdin.write(f"position fen {fen} moves {best_move}\n")
-            stockfish.stdin.write("d\n")
-            stockfish.stdin.flush()
-            while True:
-                line = stockfish.stdout.readline()
-                if not line:
-                    break
-                logger.debug(f"Engine output for new FEN: {line.strip()}")
-                if "Fen:" in line:
-                    updated_fen = line.split("Fen:")[1].strip()
-                    logger.info(f"Updated FEN: {updated_fen}")
-                    break
+            return _handle_stockfish_failure(
+                "Stockfish did not respond. Please download the correct version according to your CPU architecture.",
+                root, auto_mode_var
+            )
         
-        # Don't quit - keep the process running for next move
+        updated_fen = _get_updated_fen(stockfish, fen, best_move)
         return best_move, updated_fen, mate_flag
 
     except Exception as e:
         logger.error(f"Stockfish error: {str(e)}")
-        # Clean up on error
         cleanup_stockfish()
-        if root:
-            root.after(0, lambda err=e: messagebox.showerror("Error", f"Stockfish error: {str(err)}"))
-        if auto_mode_var:
-            auto_mode_var.set(False)
-        return None, None, False
+        return _handle_error(e, root, auto_mode_var)
+
+
+def _setup_stockfish_engine():
+    """
+    Initialize Stockfish engine and handle configuration.
+    """
+    config_recreated = ensure_config_exists()
+    stockfish = _initialize_stockfish()
+    
+    if config_recreated and stockfish:
+        logger.info("Reloading config into existing Stockfish process")
+        load_engine_config(stockfish)
+    
+    return stockfish
+
+
+def _get_move_from_engine(stockfish, depth_var, fen):
+    """
+    Send position and depth to engine, parse response for best move and mate detection.
+    """
+    stockfish.stdin.write(f"position fen {fen}\n")
+    stockfish.stdin.write(f"go depth {depth_var}\n")
+    stockfish.stdin.flush()
+    
+    best_move = None
+    mate_flag = False
+    
+    while True:
+        line = stockfish.stdout.readline()
+        if not line:
+            break
+            
+        logger.debug(f"Engine output: {line.strip()}")
+        
+        mate_flag = _check_for_mate(line, mate_flag)
+        best_move = _extract_best_move(line)
+        
+        if best_move:
+            logger.info(f"Best move received: {best_move}")
+            break
+    
+    return best_move, mate_flag
+
+
+def _check_for_mate(line, current_mate_flag):
+    """
+    Check if the engine output indicates a mate in 1.
+    """
+    if "score mate" not in line:
+        return current_mate_flag
+    
+    try:
+        parts = line.split("score mate")
+        mate_val = int(parts[1].split()[0])
+        if abs(mate_val) == 1:
+            logger.info("Mate in 1 detected")
+            return True
+    except (IndexError, ValueError):
+        logger.warning("Could not parse mate score")
+    
+    return current_mate_flag
+
+
+def _extract_best_move(line):
+    """
+    Extract best move from engine output line.
+    """
+    if line.startswith("bestmove"):
+        return line.strip().split()[1]
+    return None
+
+
+def _get_updated_fen(stockfish, original_fen, best_move):
+    """
+    Get the updated FEN position after making the best move.
+    """
+    if not best_move:
+        return None
+    
+    stockfish.stdin.write(f"position fen {original_fen} moves {best_move}\n")
+    stockfish.stdin.write("d\n")
+    stockfish.stdin.flush()
+    
+    while True:
+        line = stockfish.stdout.readline()
+        if not line:
+            break
+            
+        logger.debug(f"Engine output for new FEN: {line.strip()}")
+        
+        if "Fen:" in line:
+            updated_fen = line.split("Fen:")[1].strip()
+            logger.info(f"Updated FEN: {updated_fen}")
+            return updated_fen
+    
+    return None
+
+
+def _handle_stockfish_failure(error_msg, root, auto_mode_var):
+    """
+    Handle cases where Stockfish fails to initialize or respond.
+    """
+    logger.error(error_msg)
+    _show_error_dialog(root, error_msg)
+    _disable_auto_mode(auto_mode_var)
+    return None, None, False
+
+
+def _handle_error(error, root, auto_mode_var):
+    """
+    Handle exceptions that occur during move calculation.
+    """
+    error_msg = f"Stockfish error: {str(error)}"
+    _show_error_dialog(root, error_msg)
+    _disable_auto_mode(auto_mode_var)
+    return None, None, False
+
+
+def _show_error_dialog(root, message):
+    """
+    Show error dialog if root window is available.
+    """
+    if root:
+        root.after(0, lambda: messagebox.showerror("Error", message))
+
+
+def _disable_auto_mode(auto_mode_var):
+    """
+    Disable auto mode if the variable is available.
+    """
+    if auto_mode_var:
+        auto_mode_var.set(False)
