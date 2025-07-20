@@ -10,6 +10,9 @@ from utils.resource_path import resource_path
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+# Global Stockfish process
+_stockfish_process = None
+
 def get_root_dir():
     # When bundled by PyInstaller, __file__ doesn't point to the EXE location
     if getattr(sys, 'frozen', False):
@@ -18,7 +21,6 @@ def get_root_dir():
         return os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 CONFIG_FILE = os.path.join(get_root_dir(), "engine_config.txt")
-
 
 def load_engine_config(stockfish_proc, config_path=CONFIG_FILE):
     """Loads Stockfish engine settings from a config file. Creates default with comments if missing."""
@@ -58,10 +60,14 @@ def load_engine_config(stockfish_proc, config_path=CONFIG_FILE):
         if stockfish_proc.stdout.readline().strip() == "readyok":
             break
 
-def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
+def _initialize_stockfish():
+    """Initialize a persistent Stockfish process."""
+    global _stockfish_process
+    
+    if _stockfish_process is not None:
+        return _stockfish_process
+    
     try:
-        logger.info("Getting best move from Stockfish")
-        
         stockfish_path = resource_path("stockfish.exe" if os.name == "nt" else "stockfish")
         
         if os.name != "nt" and not os.path.exists(stockfish_path):
@@ -76,7 +82,7 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
         flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         logger.debug(f"Using Stockfish path: {stockfish_path}")
         
-        stockfish = subprocess.Popen(
+        _stockfish_process = subprocess.Popen(
             [stockfish_path],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -86,7 +92,40 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
         )
 
         # Load custom engine config
-        load_engine_config(stockfish)
+        load_engine_config(_stockfish_process)
+        
+        logger.info("Stockfish process initialized")
+        return _stockfish_process
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize Stockfish: {e}")
+        _stockfish_process = None
+        raise
+
+def cleanup_stockfish():
+    """Clean up the persistent Stockfish process."""
+    global _stockfish_process
+    
+    if _stockfish_process is not None:
+        try:
+            _stockfish_process.stdin.write("quit\n")
+            _stockfish_process.stdin.flush()
+            _stockfish_process.wait(timeout=5)
+        except:
+            _stockfish_process.terminate()
+        finally:
+            _stockfish_process = None
+            logger.info("Stockfish process cleaned up")
+
+def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
+    try:
+        logger.info("Getting best move from Stockfish")
+        
+        # Use persistent Stockfish process
+        stockfish = _initialize_stockfish()
+        
+        if stockfish is None:
+            raise RuntimeError("Failed to initialize Stockfish")
         
         stockfish.stdin.write(f"position fen {fen}\n")
         stockfish.stdin.write(f"go depth {depth_var}\n")
@@ -122,9 +161,6 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
                 root.after(0, lambda: messagebox.showerror("Error", error_msg))
             if auto_mode_var:
                 auto_mode_var.set(False)
-            stockfish.stdin.write("quit\n")
-            stockfish.stdin.flush()
-            stockfish.wait()
             return None, None, False
 
         updated_fen = None
@@ -142,14 +178,13 @@ def get_best_move(depth_var, fen, root=None, auto_mode_var=None):
                     logger.info(f"Updated FEN: {updated_fen}")
                     break
         
-        stockfish.stdin.write("quit\n")
-        stockfish.stdin.flush()
-        stockfish.wait()
-        
+        # Don't quit - keep the process running for next move
         return best_move, updated_fen, mate_flag
 
     except Exception as e:
         logger.error(f"Stockfish error: {str(e)}")
+        # Clean up on error
+        cleanup_stockfish()
         if root:
             root.after(0, lambda err=e: messagebox.showerror("Error", f"Stockfish error: {str(err)}"))
         if auto_mode_var:

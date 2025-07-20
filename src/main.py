@@ -28,6 +28,7 @@ from executor import (
     did_my_piece_move,
     expend_fen_row,
     get_best_move,
+    cleanup_stockfish,
     get_current_fen,
     is_castling_possible,
     move_cursor_to_button,
@@ -57,6 +58,7 @@ class ChessPilot:
         self.root.geometry("350x350")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Game state variables
         self.color_indicator = None
@@ -100,6 +102,12 @@ class ChessPilot:
         self.root.bind('<Escape>', self.take_esc_key)
         self.root.focus_set()
         logger.info("ChessPilot UI initialized")
+        
+    def on_closing(self):
+        """Handle application closing."""
+        logger.info("Application closing - cleaning up Stockfish process")
+        cleanup_stockfish()
+        self.root.destroy()
         
     # Handle ESC key to return to color selection
     def take_esc_key(self, event=None):
@@ -286,6 +294,6 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         logger.info("Exiting APP")
+        cleanup_stockfish()  # Also cleanup on keyboard interrupt
         root.destroy()
     logger.info("ChessPilot application closed")
-
