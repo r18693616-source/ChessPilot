@@ -3,6 +3,7 @@ import logging
 from tkinter import messagebox
 import os
 import time
+import random 
 from .is_wayland import is_wayland
 from wayland_capture.wayland import WaylandInput
 from executor.chess_notation_to_index import chess_notation_to_index
@@ -17,7 +18,17 @@ if os.name == 'nt':
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play):
+
+def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play,
+               humanize=True, offset_range=( -16, 16 )):
+    """
+    Move a piece on the board with optional humanized offsets.
+
+    Args:
+      humanize (bool): whether to apply a random offset to simulate human movement.
+      offset_range (tuple): (min_offset, max_offset) applied to both x and y as ±value.
+                            Example ( -3, 3 ) => random offset between -3 and +3 pixels.
+    """
     logger.info(f"Attempting move: {move}")
     
     start_idx, end_idx = chess_notation_to_index(color_indicator, root, auto_mode_var, move)
@@ -38,23 +49,50 @@ def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_
     start_x, start_y = start_pos
     end_x, end_y = end_pos
 
+    # Apply humanized random offsets if requested
+    if humanize and offset_range is not None:
+        try:
+            min_off, max_off = offset_range
+            # clamp sensible values if user passed reversed tuple
+            if min_off > max_off:
+                min_off, max_off = max_off, min_off
+            sx_off = random.uniform(min_off, max_off)
+            sy_off = random.uniform(min_off, max_off)
+            ex_off = random.uniform(min_off, max_off)
+            ey_off = random.uniform(min_off, max_off)
+
+            start_x = float(start_x) + sx_off
+            start_y = float(start_y) + sy_off
+            end_x   = float(end_x)   + ex_off
+            end_y   = float(end_y)   + ey_off
+
+            logger.debug(f"Applied humanized offsets: start +({sx_off:.2f},{sy_off:.2f}), "
+                         f"end +({ex_off:.2f},{ey_off:.2f})")
+        except Exception as e:
+            logger.warning(f"Failed to apply humanize offsets: {e}")
+
     try:
         if os.name == 'nt':
             logger.debug("Using win32api for Windows input (drag simulation)")
-            win32api.SetCursorPos((int(start_x), int(start_y)))
+            # win32 SetCursorPos expects ints
+            win32api.SetCursorPos((int(round(start_x)), int(round(start_y))))
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
             time.sleep(0.05)
-            win32api.SetCursorPos((int(end_x), int(end_y)))
+            win32api.SetCursorPos((int(round(end_x)), int(round(end_y))))
             time.sleep(0.05)
             win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
         elif is_wayland():
             logger.debug("Using Wayland input method")
             client = WaylandInput()
-            client.swipe(int(start_x), int(start_y), int(end_x), int(end_y), 0.001)
+            # Wayland swipe expects ints; convert
+            client.swipe(int(round(start_x)), int(round(start_y)),
+                         int(round(end_x)), int(round(end_y)), 0.001)
         else:
             logger.debug("Using PyAutoGUI for input")
+            # pyautogui accepts floats, but being explicit is fine
             pyautogui.mouseDown(start_x, start_y)
-            pyautogui.moveTo(end_x, end_y)
+            # small pause to mimic human movement speed
+            pyautogui.moveTo(end_x, end_y, duration=0.05)
             pyautogui.mouseUp(end_x, end_y)
         logger.info("Move simulated successfully")
     except Exception as e:
