@@ -141,7 +141,7 @@ def rename_stockfish():
 
     logger.warning(f"No stockfish.zip or binary found in {cwd.parent}.")
     # We’ll let extract_stockfish() still do its own search (system PATH, etc.)
-    return True
+    return False
 
 def rename_onnx_model():
     """

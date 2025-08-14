@@ -290,8 +290,14 @@ class ChessPilot:
         )
 
 if __name__ == "__main__":
-
     logger.info("Stockfish and ONNX model setup completed successfully")
+
+    # Test Stockfish before UI
+    from executor import initialize_stockfish_at_startup, cleanup_stockfish
+    if not initialize_stockfish_at_startup():
+        logger.error("Stockfish initialization failed — exiting.")
+        sys.exit(1)
+
     logger.info("Starting ChessPilot main loop")
     root = tk.Tk()
     app = ChessPilot(root)
@@ -299,6 +305,6 @@ if __name__ == "__main__":
         root.mainloop()
     except KeyboardInterrupt:
         logger.info("Exiting APP")
-        cleanup_stockfish()  # Also cleanup on keyboard interrupt
+        cleanup_stockfish()
         root.destroy()
     logger.info("ChessPilot application closed")
