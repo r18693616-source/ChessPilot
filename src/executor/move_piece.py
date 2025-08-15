@@ -63,8 +63,8 @@ def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_
 
             start_x = float(start_x) + sx_off
             start_y = float(start_y) + sy_off
-            end_x   = float(end_x)   + ex_off
-            end_y   = float(end_y)   + ey_off
+            end_x = float(end_x) + ex_off
+            end_y = float(end_y) + ey_off
 
             logger.debug(f"Applied humanized offsets: start +({sx_off:.2f},{sy_off:.2f}), "
                          f"end +({ex_off:.2f},{ey_off:.2f})")
