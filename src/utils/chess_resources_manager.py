@@ -5,7 +5,7 @@ from shutil import which
 import sys
 from pathlib import Path
 
-from .downloader import download_stockfish  # must provide this in downloader.py
+from .downloader import download_stockfish
 
 # Logger setup
 logger = logging.getLogger(__name__)

@@ -341,7 +341,10 @@ class StockfishDownloaderApp:
             logger.info(f"Detected OS={os_name}, arch={arch}")
 
             if os_name == "windows":
-                target_path = Path(__file__).resolve().parent / "stockfish.exe"
+                if getattr(sys, 'frozen', False):  # running as PyInstaller EXE
+                    target_path = Path(sys.executable).parent / "stockfish.exe"
+                else:
+                    target_path = Path.cwd() / "stockfish.exe"
             else:
                 target_path = Path("/usr/bin/stockfish")
 
