@@ -44,25 +44,35 @@ def detect_arch_flags():
     arch = platform.machine().lower()
     flags = set()
     os_name = detect_os()
+    
     if os_name == "linux":
         try:
-            out = subprocess.check_output("lscpu", shell=True, text=True)
+            # Use full path and avoid shell=True for security
+            out = subprocess.check_output(["/usr/bin/lscpu"], text=True, timeout=10)
             for line in out.splitlines():
                 if "Flags" in line or "flags" in line:
                     flags.update(line.split(":")[1].strip().split())
-        except Exception:
-            pass
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning(f"Could not detect CPU flags on Linux: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error detecting CPU flags: {e}")
+            
     elif os_name == "mac":
         try:
-            out = subprocess.check_output(["sysctl", "-a"], text=True)
+            # Use full path for security
+            out = subprocess.check_output(["/usr/sbin/sysctl", "-a"], text=True, timeout=10)
             for line in out.splitlines():
                 key = line.split(":")[0].strip().lower()
                 if "machdep.cpu.features" in key or "machdep.cpu.leaf7_features" in key:
                     flags.update(line.split(":")[1].strip().split())
-        except Exception:
-            pass
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning(f"Could not detect CPU flags on macOS: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error detecting CPU flags: {e}")
+            
     elif os_name == "windows":
         flags.update(["sse4_1"])
+        
     return arch, flags
 
 def format_bytes(n):
@@ -87,6 +97,7 @@ def choose_best_asset(assets, os_name, arch, flags):
         elif os_name == "windows":
             if n.startswith("stockfish-windows"):
                 filtered.append(a)
+                
     if not filtered:
         for a in assets:
             n = a["name"].lower()
@@ -133,44 +144,68 @@ def download_file(url, dest_path, progress_callback=None, chunk_size=8192, timeo
     last_report_time = start_time
     last_report_bytes = 0
 
-    with requests.get(url, stream=True, timeout=timeout) as r:
-        r.raise_for_status()
-        total = r.headers.get("Content-Length")
-        total = int(total) if total else None
-        with open(dest_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    now = time.time()
-                    elapsed = now - start_time if (now - start_time) > 0 else 1e-6
-                    # average speed
-                    speed = downloaded / elapsed
-                    # report at least every 0.4s or on each chunk if small file
-                    if (now - last_report_time) >= 0.4 or downloaded == total:
-                        last_report_time = now
-                        last_report_bytes = downloaded
-                        if progress_callback:
-                            try:
-                                progress_callback(downloaded, total, speed)
-                            except Exception:
-                                pass
+    try:
+        with requests.get(url, stream=True, timeout=timeout) as r:
+            r.raise_for_status()
+            total = r.headers.get("Content-Length")
+            total = int(total) if total else None
+            
+            with open(dest_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        now = time.time()
+                        elapsed = now - start_time if (now - start_time) > 0 else 1e-6
+                        # average speed
+                        speed = downloaded / elapsed
+                        # report at least every 0.4s or on each chunk if small file
+                        if (now - last_report_time) >= 0.4 or downloaded == total:
+                            last_report_time = now
+                            last_report_bytes = downloaded
+                            if progress_callback:
+                                try:
+                                    progress_callback(downloaded, total, speed)
+                                except Exception as e:
+                                    logger.warning(f"Progress callback error: {e}")
+                                    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Download failed: {e}")
+        raise
+    except IOError as e:
+        logger.error(f"File write error: {e}")
+        raise
+        
     logger.debug("Download finished")
-
 
 def extract_binary(archive_path):
     tmpdir = tempfile.mkdtemp()
     extracted = []
+    
     try:
         if archive_path.endswith((".tar", ".tar.gz", ".tgz")):
             with tarfile.open(archive_path, "r:*") as t:
-                t.extractall(tmpdir)
+                # Security: Check for path traversal attacks
+                def safe_extract(tarinfo, path):
+                    if os.path.isabs(tarinfo.name) or ".." in tarinfo.name:
+                        logger.warning(f"Skipping potentially dangerous path: {tarinfo.name}")
+                        return None
+                    return tarinfo
+                
+                t.extractall(tmpdir, members=[safe_extract(m, tmpdir) for m in t.getmembers() if safe_extract(m, tmpdir)])
                 for root, _, files in os.walk(tmpdir):
                     for f in files:
                         extracted.append(os.path.join(root, f))
+                        
         elif archive_path.endswith(".zip"):
             with zipfile.ZipFile(archive_path, "r") as z:
-                z.extractall(tmpdir)
+                # Security: Check for path traversal attacks
+                for member in z.namelist():
+                    if os.path.isabs(member) or ".." in member:
+                        logger.warning(f"Skipping potentially dangerous path: {member}")
+                        continue
+                    z.extract(member, tmpdir)
+                    
                 for root, _, files in os.walk(tmpdir):
                     for f in files:
                         extracted.append(os.path.join(root, f))
@@ -178,8 +213,13 @@ def extract_binary(archive_path):
             dest = os.path.join(tmpdir, os.path.basename(archive_path))
             shutil.copy2(archive_path, dest)
             extracted.append(dest)
+            
+    except (tarfile.TarError, zipfile.BadZipFile) as e:
+        logger.error(f"Archive extraction failed: {e}")
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        return None
     except Exception as e:
-        logger.exception("Extraction failed")
+        logger.error(f"Unexpected extraction error: {e}")
         shutil.rmtree(tmpdir, ignore_errors=True)
         return None
 
@@ -187,10 +227,12 @@ def extract_binary(archive_path):
         name = os.path.basename(f).lower()
         if "stockfish" in name:
             try:
-                os.chmod(f, 0o755)
-            except Exception:
-                pass
+                # More restrictive permissions: owner can execute, group/others can read only
+                os.chmod(f, 0o744)
+            except OSError as e:
+                logger.warning(f"Could not set permissions on {f}: {e}")
             return f
+            
     shutil.rmtree(tmpdir, ignore_errors=True)
     return None
 
@@ -198,13 +240,19 @@ def extract_binary(archive_path):
 def install_with_sudo(bin_path, password):
     target = "/usr/bin/stockfish"
     try:
-        cmd = ["sudo", "-S", "install", "-m", "755", bin_path, target]
-        proc = subprocess.run(cmd, input=(password + "\n"), text=True, capture_output=True, check=True)
+        # Use full path to sudo for security
+        cmd = ["/usr/bin/sudo", "-S", "install", "-m", "755", bin_path, target]
+        proc = subprocess.run(cmd, input=(password + "\n"), text=True, 
+                            capture_output=True, check=True, timeout=30)
         logger.debug("sudo install output: %s", proc.stdout)
         return True, target
     except subprocess.CalledProcessError as e:
         stderr = e.stderr or e.stdout or str(e)
+        logger.error(f"sudo install failed: {stderr}")
         return False, stderr
+    except subprocess.TimeoutExpired:
+        logger.error("sudo install timed out")
+        return False, "Installation timed out"
 
 def install_as_root(bin_path):
     target = Path("/usr/bin/stockfish")
@@ -212,7 +260,8 @@ def install_as_root(bin_path):
         shutil.copy2(bin_path, str(target))
         target.chmod(0o755)
         return True, str(target)
-    except Exception as e:
+    except (OSError, IOError) as e:
+        logger.error(f"Root install failed: {e}")
         return False, str(e)
 
 # ------------------------ Downloader UI (styled like ChessPilot) ------------------------
@@ -228,8 +277,9 @@ class StockfishDownloaderApp:
         self.style = ttk.Style()
         try:
             self.style.theme_use("clam")
-        except Exception:
-            pass
+        except tk.TclError:
+            logger.warning("Could not set clam theme")
+            
         self.style.configure("TLabel", background=BG_COLOR, foreground=TEXT_COLOR)
         self.style.configure("TButton", background=FRAME_COLOR, foreground=TEXT_COLOR)
         self.style.configure("TProgressbar", troughcolor=FRAME_COLOR)
@@ -251,8 +301,10 @@ class StockfishDownloaderApp:
 
     def set_label(self, text):
         self.root.after(0, lambda: self.label.config(text=text))
+        
     def set_sub_label(self, text):
         self.root.after(0, lambda: self.sub_label.config(text=text))
+        
     def set_progress(self, pct):
         self.root.after(0, lambda: self.progress.set(pct))
 
@@ -271,7 +323,8 @@ class StockfishDownloaderApp:
         def prompt():
             try:
                 result["pw"] = self._show_password_modal()
-            except Exception:
+            except Exception as e:
+                logger.error(f"Password prompt error: {e}")
                 result["pw"] = None
             finally:
                 event.set()
@@ -358,11 +411,21 @@ class StockfishDownloaderApp:
 
             self.set_label("Fetching latest release metadata...")
             logger.info("Fetching latest Stockfish release metadata from GitHub")
-            r = requests.get("https://api.github.com/repos/official-stockfish/Stockfish/releases/latest", timeout=15)
-            r.raise_for_status()
-            rel = r.json()
+            
+            try:
+                r = requests.get("https://api.github.com/repos/official-stockfish/Stockfish/releases/latest", timeout=15)
+                r.raise_for_status()
+                rel = r.json()
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to fetch release metadata: {e}")
+                self.set_label("Network error")
+                self.set_sub_label("Could not fetch release info")
+                self.close_after(1200)
+                return
+                
             tag = rel.get("tag_name", "unknown")
-            assets = [{"name": a["name"], "url": a["browser_download_url"], "size": a.get("size", 0)} for a in rel.get("assets", [])]
+            assets = [{"name": a["name"], "url": a["browser_download_url"], "size": a.get("size", 0)} 
+                     for a in rel.get("assets", [])]
 
             best_asset = choose_best_asset(assets, os_name, arch, flags)
             if not best_asset:
@@ -387,8 +450,8 @@ class StockfishDownloaderApp:
                         self.set_progress(5)
                     else:
                         logger.info("Local archive exists but size differs; re-downloading")
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.warning(f"Could not check local archive: {e}")
 
             # progress callback shows bytes done, total and speed
             def progress_cb(d, t, speed_bytes_per_s):
@@ -403,7 +466,14 @@ class StockfishDownloaderApp:
 
             if (not os.path.exists(archive_path)) or (best_asset.get("size") and os.path.getsize(archive_path) != int(best_asset.get("size", 0))):
                 self.set_label(f"Downloading {asset_name}...")
-                download_file(best_asset["url"], archive_path, progress_callback=progress_cb)
+                try:
+                    download_file(best_asset["url"], archive_path, progress_callback=progress_cb)
+                except Exception as e:
+                    logger.error(f"Download failed: {e}")
+                    self.set_label("Download failed")
+                    self.set_sub_label("See logs for details")
+                    self.close_after(1400)
+                    return
             else:
                 self.set_progress(12)
 
@@ -427,8 +497,8 @@ class StockfishDownloaderApp:
                     self.set_progress(100)
                     self.close_after(700)
                     return
-                except Exception as e:
-                    logger.exception("Failed to copy binary on Windows")
+                except (OSError, IOError) as e:
+                    logger.error(f"Failed to copy binary on Windows: {e}")
                     self.set_label("Install failed")
                     self.set_sub_label(str(e))
                     self.close_after(1400)
@@ -468,7 +538,6 @@ class StockfishDownloaderApp:
             self.set_label("Error occurred")
             self.set_sub_label(str(ex))
             self.close_after(1600)
-
 
 def download_stockfish(target: Path | None = None):
     """
