@@ -106,7 +106,7 @@ class ChessPilot:
         
         # Initialize Stockfish at startup
         if not initialize_stockfish_at_startup():
-            logger.warning("Stockfish initialization failed at startup - will retry when needed")
+            logger.warning("Stockfish initialization failed at startup")
         
     def on_closing(self):
         """Handle application closing."""
