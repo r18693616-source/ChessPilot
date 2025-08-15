@@ -64,8 +64,8 @@ def resource_path(relative_path: str) -> str:
                 if returned.exists():
                     logger.info("Downloader returned a valid path: %s", returned)
                     return str(returned)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Error checking downloader path: %s", e)
 
         # Nothing worked
         raise FileNotFoundError("Stockfish not found in PATH or /usr/bin after download attempt")
