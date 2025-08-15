@@ -1,14 +1,19 @@
 import os
-import zipfile
-from pathlib import Path
 import shutil
 import logging
 from shutil import which
 import sys
+from pathlib import Path
+
+from .downloader import download_stockfish  # must provide this in downloader.py
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    ch = logging.StreamHandler()
+    ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
+    logger.addHandler(ch)
 
 README_STOCKFISH_URL = "https://github.com/OTAKUWeBer/ChessPilot/blob/main/README.md"
 README_ONNX_URL = "https://github.com/OTAKUWeBer/ChessPilot/blob/main/README.md"
@@ -21,127 +26,101 @@ def find_file_with_keyword(keyword, extension=None, search_path=None):
     """
     base_path = Path(search_path or Path.cwd())
     logger.debug(f"Searching for files with keyword '{keyword}' and extension '{extension}' in {base_path}")
-    for file in base_path.iterdir():
-        if keyword.lower() in file.name.lower():
-            if extension:
-                if file.suffix.lower() == extension.lower():
+    try:
+        for file in base_path.iterdir():
+            if keyword.lower() in file.name.lower():
+                if extension:
+                    if file.suffix.lower() == extension.lower():
+                        logger.debug(f"Found file: {file}")
+                        return file
+                else:
                     logger.debug(f"Found file: {file}")
                     return file
-            else:
-                logger.debug(f"Found file: {file}")
-                return file
+    except Exception as e:
+        logger.debug(f"Error while scanning {base_path}: {e}")
     logger.debug("No matching file found.")
     return None
 
 def extract_stockfish():
     """
     Ensures a Stockfish binary exists at ./stockfish or ./stockfish.exe in cwd.
-    Extracts from ZIP in cwd if needed.
+    If missing, attempts to download via downloader.download_stockfish().
+    Returns True on success (binary available), False otherwise.
     """
+    # If bundled by pyinstaller
+    bundled_name = "stockfish.exe" if os.name == "nt" else "stockfish"
     if getattr(sys, 'frozen', False):
-        bundled_name = "stockfish.exe" if os.name == "nt" else "stockfish"
         bundled_path = Path(sys._MEIPASS) / bundled_name
         if bundled_path.exists():
             logger.info(f"Using bundled Stockfish at {bundled_path}.")
             return True
 
-    target_name = "stockfish.exe" if os.name == "nt" else "stockfish"
+    # Determine working directory (when called from setup_resources script_dir is typically cwd)
     if getattr(sys, "frozen", False):
-        # one‑file bundle: look in the folder containing the .exe
         cwd = Path(sys.executable).parent
     else:
         cwd = Path.cwd()
-    final_path = cwd / target_name
+    final_path = cwd / bundled_name
 
-    system_path = which(target_name)
+    # If system installed, skip
+    system_path = which(bundled_name)
     if system_path:
-        logger.info(f"Found system-installed Stockfish at {system_path}. Skipping extraction.")
+        logger.info(f"Found system-installed Stockfish at {system_path}. Skipping download/extract.")
         return True
 
+    # If already present in cwd, skip
     if final_path.exists():
-        logger.info(f"Stockfish binary already exists at {final_path}. Skipping extraction.")
+        logger.info(f"Stockfish binary already exists at {final_path}. Skipping download.")
         return True
 
-    zip_path = find_file_with_keyword("stockfish", ".zip", search_path=cwd)
-    if not zip_path:
-        logger.error(
-            f"No Stockfish executable or ZIP found in {cwd}. See README: {README_STOCKFISH_URL}"
-        )
-        return False
-
-    extract_to = cwd / "temp_stockfish_extract"
-    extract_to.mkdir(exist_ok=True)
-
-    logger.info(f"Extracting Stockfish from {zip_path} …")
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(extract_to)
-
-    stockfish_exe = None
-    for path in extract_to.rglob("*"):
-        if (
-            path.is_file()
-            and "stockfish" in path.name.lower()
-            and path.suffix.lower() in [".exe", ""]
-        ):
-            stockfish_exe = path
-            break
-
-    if not stockfish_exe:
-        logger.error(
-            f"Extracted ZIP but no Stockfish binary found in {extract_to}. See README: {README_STOCKFISH_URL}"
-        )
-        shutil.rmtree(extract_to)
-        return False
-
-    shutil.move(str(stockfish_exe), final_path)
-    logger.info(f"Stockfish extracted and renamed to {final_path}")
-    if os.name != "nt":
+    # Attempt to download using your downloader API
+    logger.info(f"Stockfish not found. Attempting to download to {final_path} ...")
+    try:
+        # Try calling downloader with target path if signature accepts it
         try:
-            perms = final_path.stat().st_mode
-            final_path.chmod(perms | 0o111)
-        except Exception as e:
-            logger.warning(f"Could not set execute permissions on {final_path}: {e}")
-    shutil.rmtree(extract_to)
-    return True
+            res = download_stockfish(final_path)
+        except TypeError:
+            # Fallback: call without args
+            logger.debug("download_stockfish() didn't accept a target path; calling without args.")
+            res = download_stockfish()
 
-def rename_stockfish():
-    """
-    Ensures stockfish.zip or the raw stockfish binary lives in cwd.
-    Searches cwd first, then parent dir, and moves it into cwd if found.
-    """
-    if getattr(sys, "frozen", False):
-        cwd = Path(sys.executable).parent
-    else:
-        cwd = Path.cwd()
+        # Accept several return conventions: True/False, path-like, or None
+        if isinstance(res, bool):
+            ok = res
+        elif res is None:
+            # assume downloader performed its own placement; check final_path
+            ok = final_path.exists() or which(bundled_name) is not None
+        else:
+            # if downloader returned a path-like, check it
+            try:
+                returned = Path(res)
+                ok = returned.exists()
+                # if it's not at final_path, try moving it into place
+                if ok and returned.resolve() != final_path.resolve():
+                    try:
+                        shutil.move(str(returned), str(final_path))
+                        ok = final_path.exists()
+                    except Exception as e:
+                        logger.warning("Could not move downloaded binary into place: %s", e)
+            except Exception:
+                ok = False
 
-    # possible names
-    zip_name = "stockfish.zip" if os.name == "nt" else "stockfish"
-    bin_name = "stockfish.exe" if os.name == "nt" else "stockfish"
-    zip_target = cwd / zip_name
-    bin_target = cwd / bin_name
-
-    # If already in cwd, nothing to do
-    if zip_target.exists() or bin_target.exists():
-        logger.info(f"Stockfish ZIP or binary already in {cwd}.")
-        return True
-
-    # Look for ZIP in cwd.parent
-    parent_zip = find_file_with_keyword("stockfish", ".zip", search_path=cwd.parent)
-    if parent_zip:
-        shutil.move(parent_zip, zip_target)
-        logger.info(f"Copied {parent_zip.name} into {zip_target}.")
-        return True
-
-    # Look for raw binary in cwd.parent
-    parent_bin = find_file_with_keyword("stockfish", None, search_path=cwd.parent)
-    if parent_bin and parent_bin.name.lower().startswith("stockfish"):
-        shutil.move(parent_bin, bin_target)
-        logger.info(f"Copied {parent_bin.name} into {bin_target}.")
-        return True
-
-    logger.warning(f"No stockfish.zip or binary found in {cwd.parent}.")
-    # We’ll let extract_stockfish() still do its own search (system PATH, etc.)
-    return False
+        if ok:
+            # Ensure executable perm on non-windows
+            if os.name != "nt":
+                try:
+                    st = final_path.stat().st_mode
+                    final_path.chmod(st | 0o111)
+                except Exception as e:
+                    logger.warning("Failed to set executable bit: %s", e)
+            logger.info(f"Stockfish ready at {final_path}")
+            return True
+        else:
+            logger.error(f"Downloader reported failure or binary not found at {final_path}. See README: {README_STOCKFISH_URL}")
+            return False
+    except Exception as e:
+        logger.exception("Error while attempting to download Stockfish: %s", e)
+        return False
 
 def rename_onnx_model():
     """
@@ -172,57 +151,65 @@ def rename_onnx_model():
         )
         return False
 
-    shutil.move(str(onnx_file), str(target_path))
-    logger.info(f"ONNX model moved to {target_path}")
-    return True
+    try:
+        shutil.move(str(onnx_file), str(target_path))
+        logger.info(f"ONNX model moved to {target_path}")
+        return True
+    except Exception as e:
+        logger.exception("Failed to move ONNX model: %s", e)
+        return False
 
 def setup_resources(script_dir: Path, project_dir: Path) -> bool:
     """
     On Windows:
-      1) rename_stockfish()
-      2) extract_stockfish()
-      3) move stockfish.zip/binary from project_dir->script_dir
-      4) move ONNX model from project_dir->script_dir
-      5) rename_onnx_model()
+      - ensure Stockfish binary exists (download if missing)
+      - move stockfish binary from project_dir->script_dir if present
+      - move ONNX model from project_dir->script_dir if present
+      - ensure chess_detection.onnx is present in script_dir
     On other OSes: nothing to do.
     Returns True if everything that mattered succeeded.
     """
     if os.name != "nt":
         return True
 
-    # 1) stockfish rename & extract
-    if not rename_stockfish():
-        return False
-    if not extract_stockfish():
-        return False
-
-    # 2) move any ZIP/binary from root into src
-    root_zip = project_dir / "stockfish.zip"
-    src_zip = script_dir / "stockfish.zip"
+    # Ensure stockfish binary is present in script_dir (cwd is expected to be script_dir)
+    # If the binary exists in the project root, move it into script_dir
     root_bin = project_dir / "stockfish.exe"
     src_bin = script_dir / "stockfish.exe"
 
-    if root_zip.exists() and not src_zip.exists():
-        shutil.move(str(root_zip), str(src_zip))
-        logger.info(f"Copied stockfish.zip into src/: {src_zip}")
-    elif root_bin.exists() and not src_bin.exists():
-        shutil.move(str(root_bin), str(src_bin))
-        logger.info(f"Copied Stockfish binary into src/: {src_bin}")
+    if root_bin.exists() and not src_bin.exists():
+        try:
+            shutil.move(str(root_bin), str(src_bin))
+            logger.info(f"Moved Stockfish binary from project root into src/: {src_bin}")
+        except Exception as e:
+            logger.warning("Could not move stockfish from project root to src: %s", e)
 
-    # 3) ONNX model move & rename
+    # Attempt to ensure stockfish is present (download if missing)
+    if not extract_stockfish():
+        logger.error("Stockfish setup failed")
+        return False
+
+    # ONNX model move & rename: if project had the model, move it to script_dir
     root_onnx = project_dir / "chess_detection.onnx"
     src_onnx = script_dir / "chess_detection.onnx"
     if root_onnx.exists() and not src_onnx.exists():
-        shutil.move(str(root_onnx), str(src_onnx))
-        logger.info(f"Copied ONNX model into src/: {src_onnx}")
+        try:
+            shutil.move(str(root_onnx), str(src_onnx))
+            logger.info(f"Copied ONNX model into src/: {src_onnx}")
+        except Exception as e:
+            logger.warning("Could not move ONNX model from project root: %s", e)
 
     if not rename_onnx_model():
+        logger.error("ONNX rename/move failed")
         return False
 
     return True
 
 if __name__ == "__main__":
-    logger.info("Starting Stockfish extraction and ONNX model rename process...")
+    logger.info("Starting Stockfish download check and ONNX model rename process...")
+    # Default behavior: run from cwd (expected to be script_dir)
+    script_dir = Path.cwd()
+    project_dir = script_dir.parent
     stockfish_ok = extract_stockfish()
     onnx_ok = rename_onnx_model()
     if stockfish_ok and onnx_ok:
