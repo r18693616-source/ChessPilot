@@ -48,12 +48,6 @@
 
 ChessPilot is also available on the Arch User Repository (AUR). You can install it using your preferred AUR helper:
 
-```bash
-# Using yay
-yay -S chesspilot --skipreview
-# Using paru
-paru -S chesspilot --skipreview
-```
 
 ### Included in Binary Releases
 
