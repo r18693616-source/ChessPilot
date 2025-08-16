@@ -324,6 +324,8 @@ def install_as_root(bin_path):
         logger.error(f"Root install failed: {e}")
         return False, str(e)
 
+# NOTE: Above helpers are kept for compatibility but will not be used in the simplified flow.
+
 # ------------------------ Download workflow ------------------------
 class DownloadWorkflow:
     def __init__(self, ui_callbacks):
@@ -374,13 +376,17 @@ class DownloadWorkflow:
         return False
     
     def _get_target_path(self):
+        # Minimal behavior: install next to executable (if frozen) or to current working directory
         if self.os_name == "windows":
             if getattr(sys, 'frozen', False):
                 return Path(sys.executable).parent / "stockfish.exe"
             else:
                 return Path.cwd() / "stockfish.exe"
         else:
-            return Path("/usr/bin/stockfish")
+            if getattr(sys, 'frozen', False):
+                return Path(sys.executable).parent / "stockfish"
+            else:
+                return Path.cwd() / "stockfish"
     
     def _fetch_release_data(self):
         self.ui.set_label("Fetching latest release metadata...")
@@ -489,6 +495,7 @@ class DownloadWorkflow:
         if self.os_name == "windows":
             self._install_windows(bin_path, target_path)
         else:
+            # simplified: install into current working directory / executable dir like Windows
             self._install_unix(bin_path, target_path)
     
     def _install_windows(self, bin_path, target_path):
@@ -505,36 +512,18 @@ class DownloadWorkflow:
             self.ui.close_after(1400)
     
     def _install_unix(self, bin_path, target_path):
-        is_root = hasattr(os, "geteuid") and os.geteuid() == 0
-        
-        if is_root:
-            ok, info = install_as_root(bin_path)
-        else:
-            password = self._get_sudo_password()
-            if not password:
-                return
-            ok, info = install_with_sudo(bin_path, password)
-
-        if ok:
-            logger.info("Installed Stockfish to %s", info)
-            self.ui.set_label(f"Installed to {Path(info).name}")
+        try:
+            shutil.copy2(bin_path, target_path)
+            os.chmod(target_path, 0o755)
+            logger.info("Installed Stockfish to %s", target_path)
+            self.ui.set_label(f"Installed to {target_path.name}")
             self.ui.set_progress(100)
             self.ui.close_after(700)
-        else:
-            logger.error("Install failed: %s", info)
+        except (OSError, IOError) as e:
+            logger.error(f"Failed to copy binary on Unix-like OS: {e}")
             self.ui.set_label("Install failed")
-            self.ui.set_sub_label("See logs")
+            self.ui.set_sub_label(str(e))
             self.ui.close_after(1400)
-    
-    def _get_sudo_password(self):
-        self.ui.set_label("Administrator password required")
-        password = self.ui.ask_sudo_password()
-        if not password:
-            logger.warning("No sudo password provided; aborting")
-            self.ui.set_label("Aborted (no password)")
-            self.ui.close_after(900)
-            return None
-        return password
 
 # ------------------------ Downloader UI (styled like ChessPilot) ------------------------
 class StockfishDownloaderApp:
@@ -584,81 +573,6 @@ class StockfishDownloaderApp:
     def set_progress(self, pct):
         self.root.after(0, lambda: self.progress.set(pct))
 
-    def ask_sudo_password(self):
-        """
-        Prompt for sudo password using a styled modal (same look-and-feel as the main UI).
-        Can be called from background threads: schedules modal on main thread and waits.
-        Returns the password string or None if cancelled.
-        """
-        if threading.current_thread() is threading.main_thread():
-            return self._show_password_modal()
-
-        result = {"pw": None}
-        event = threading.Event()
-
-        def prompt():
-            try:
-                result["pw"] = self._show_password_modal()
-            except Exception as e:
-                logger.error(f"Password prompt error: {e}")
-                result["pw"] = None
-            finally:
-                event.set()
-
-        self.root.after(0, prompt)
-        event.wait()
-        return result["pw"]
-
-    def _show_password_modal(self):
-        win = tk.Toplevel(self.root)
-        win.title("Administrator password")
-        win.transient(self.root)
-        win.grab_set()
-        win.resizable(False, False)
-        win.configure(bg=BG_COLOR)
-
-        # center the modal roughly over parent
-        self.root.update_idletasks()
-        x = self.root.winfo_rootx() + (self.root.winfo_width() // 2) - 160
-        y = self.root.winfo_rooty() + (self.root.winfo_height() // 2) - 60
-        win.geometry(f"320x120+{x}+{y}")
-
-        lbl = ttk.Label(win, text="Enter your sudo password to install to /usr/bin:")
-        lbl.pack(fill="x", padx=12, pady=(12, 6))
-
-        pw_var = tk.StringVar()
-        entry = ttk.Entry(win, textvariable=pw_var, show="*")
-        entry.pack(fill="x", padx=12)
-        entry.focus_set()
-
-        btn_frame = tk.Frame(win, bg=BG_COLOR)
-        btn_frame.pack(fill="x", pady=(10, 8))
-
-        result = {"value": None}
-
-        def on_ok():
-            result["value"] = pw_var.get()
-            win.grab_release()
-            win.destroy()
-
-        def on_cancel():
-            result["value"] = None
-            win.grab_release()
-            win.destroy()
-
-        ok_btn = ttk.Button(btn_frame, text="OK", command=on_ok)
-        ok_btn.pack(side="right", padx=(0, 12))
-        cancel_btn = ttk.Button(btn_frame, text="Cancel", command=on_cancel)
-        cancel_btn.pack(side="right", padx=(0, 6))
-
-        # bind Enter/Escape
-        win.bind('<Return>', lambda e: on_ok())
-        win.bind('<Escape>', lambda e: on_cancel())
-
-        # block until window closed
-        self.root.wait_window(win)
-        return result["value"]
-
     def close_after(self, ms=900):
         logger.debug("Window will close in %d ms", ms)
         self.root.after(ms, self.root.destroy)
@@ -672,8 +586,7 @@ def download_stockfish(target: Path | None = None):
     Main entry point to run the Stockfish downloader app.
     Accepts optional `target` Path (e.g. Path('/usr/bin/stockfish')).
     """
-    # currently the GUI installer always prompts for sudo and installs to /usr/bin (Linux)
-    # Passing `target` is accepted for compatibility (resource_path passes /usr/bin).
+    # GUI installer now installs into working directory / executable dir (no sudo)
     root = tk.Tk()
     app = StockfishDownloaderApp(root)
     root.mainloop()

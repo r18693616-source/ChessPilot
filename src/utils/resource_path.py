@@ -9,55 +9,83 @@ from .downloader import download_stockfish
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+
 def resource_path(relative_path: str) -> str:
     """
     Resolve a resource path.
-    Special-case 'stockfish' on Unix-like systems: check PATH and /usr/bin first;
-    if missing, attempt to download via downloader.download_stockfish() and then
-    re-check /usr/bin. If downloader returns a path, return that. Raises FileNotFoundError
-    only if all attempts fail.
+
+    Special-case 'stockfish' on Unix-like systems: prefer system PATH, then
+    look for a local copy (current working directory, executable folder, or
+    dev layout). If missing, attempt to download using downloader.download_stockfish()
+    (note: downloader no longer installs to /usr/bin or asks for sudo). After
+    the downloader completes we re-check the local locations and also any path
+    returned by the downloader. Raises FileNotFoundError only if all attempts fail.
     """
     # Special handling for the stockfish binary on non-windows OSes
     if relative_path.lower() == "stockfish" and os.name != "nt":
-        usr_bin = Path("/usr/bin/stockfish")
-
         # 1) prefer system PATH if available
         system_path = which("stockfish")
         if system_path:
             logger.debug(f"Using system Stockfish from PATH: {system_path}")
             return str(Path(system_path))
 
-        # 2) check /usr/bin
-        if usr_bin.exists():
-            logger.debug(f"Found Stockfish at {usr_bin}")
-            return str(usr_bin)
+        # 2) check common local locations (cwd, frozen exe dir, dev layout)
+        candidates = []
 
-        # 3) Not found — attempt to call downloader to install into /usr/bin
-        logger.info("/usr/bin/stockfish not found. Attempting to download/install Stockfish into /usr/bin ...")
+        # if running a frozen app, prefer the executable folder first
+        if getattr(sys, 'frozen', False):
+            exe_folder = Path(sys.executable).parent
+            candidates.append(exe_folder / "stockfish")
+
+        # current working directory
+        candidates.append(Path.cwd() / "stockfish")
+
+        # project/dev layout (same as the original fallback)
+        dev_base = Path(__file__).parent.parent
+        candidates.append(dev_base / "stockfish")
+
+        for c in candidates:
+            try:
+                if c.exists():
+                    logger.debug(f"Found Stockfish locally at: {c}")
+                    return str(c)
+            except Exception as e:
+                logger.warning(f"Could not stat candidate {c}: {e}")
+
+        # 3) Not found — attempt to call downloader (no target; downloader installs next to exe or into CWD)
+        logger.info("Stockfish not found in PATH or local dirs. Attempting to download via downloader...")
         res = None
         try:
-            # prefer passing the target path (downloader may accept Path)
             try:
-                logger.debug("Calling download_stockfish with target Path('/usr/bin/stockfish') ...")
-                res = download_stockfish(usr_bin)
+                # downloader previously accepted a target; current simplified downloader installs into CWD/exe dir
+                logger.debug("Calling download_stockfish() without target...")
+                res = download_stockfish()
             except TypeError:
-                logger.debug("download_stockfish() doesn't accept a target. Calling without args ...")
+                logger.debug("download_stockfish() raised TypeError; retrying without args")
                 res = download_stockfish()
             logger.debug("Downloader returned: %s", res)
         except Exception as e:
             logger.exception("Downloader call failed: %s", e)
-            # re-check in case downloader used sudo and created /usr/bin/stockfish despite exception
-            if usr_bin.exists():
-                logger.info("Stockfish appeared at /usr/bin after download attempt.")
-                return str(usr_bin)
-            raise FileNotFoundError("Stockfish not found in PATH or /usr/bin, downloader failed to install") from e
+            # re-check local candidates in case downloader placed the binary despite the exception
+            for c in candidates:
+                try:
+                    if c.exists():
+                        logger.info("Stockfish appeared at %s after download attempt.", c)
+                        return str(c)
+                except Exception:
+                    pass
+            raise FileNotFoundError("Stockfish not found in PATH or local dirs; downloader failed") from e
 
-        # After downloader attempt, prefer /usr/bin if present
-        if usr_bin.exists():
-            logger.info("Stockfish installed at /usr/bin/stockfish")
-            return str(usr_bin)
+        # After downloader attempt, prefer any candidate that now exists
+        for c in candidates:
+            try:
+                if c.exists():
+                    logger.info("Stockfish installed at %s", c)
+                    return str(c)
+            except Exception:
+                pass
 
-        # If downloader returned a path-like, check it and return if exists
+        # If downloader returned a path-like, check it and return if it exists
         try:
             if res:
                 returned = Path(res)
@@ -65,10 +93,10 @@ def resource_path(relative_path: str) -> str:
                     logger.info("Downloader returned a valid path: %s", returned)
                     return str(returned)
         except Exception as e:
-            logger.warning("Error checking downloader path: %s", e)
+            logger.warning("Error checking downloader-returned path: %s", e)
 
         # Nothing worked
-        raise FileNotFoundError("Stockfish not found in PATH or /usr/bin after download attempt")
+        raise FileNotFoundError("Stockfish not found in PATH or local directories after download attempt")
 
     # For frozen apps, prefer bundled resources and external next to exe
     if getattr(sys, 'frozen', False):
