@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import platform
 import subprocess
@@ -525,7 +524,7 @@ class DownloadWorkflow:
             self.ui.set_sub_label(str(e))
             self.ui.close_after(1400)
 
-# ------------------------ Downloader UI (styled like ChessPilot) ------------------------
+# ------------------------ Downloader UI ------------------------
 class StockfishDownloaderApp:
     def __init__(self, root):
         self.root = root

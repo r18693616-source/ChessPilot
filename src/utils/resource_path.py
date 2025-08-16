@@ -133,16 +133,6 @@ def _handle_dev_resources(relative_path: str) -> str:
 
 
 def resource_path(relative_path: str) -> str:
-    """
-    Resolve a resource path.
-
-    Special-case 'stockfish' on Unix-like systems: prefer system PATH, then
-    look for a local copy (current working directory, executable folder, or
-    dev layout). If missing, attempt to download using downloader.download_stockfish()
-    (note: downloader no longer installs to /usr/bin or asks for sudo). After
-    the downloader completes we re-check the local locations and also any path
-    returned by the downloader. Raises FileNotFoundError only if all attempts fail.
-    """
     # Special handling for the stockfish binary on non-windows OSes
     if relative_path.lower() == "stockfish" and os.name != "nt":
         return _handle_stockfish_unix()

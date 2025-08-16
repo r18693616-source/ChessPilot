@@ -270,15 +270,6 @@ def _move_resource_from_project_root(project_dir, script_dir, filename, resource
 
 
 def setup_resources(script_dir: Path, project_dir: Path) -> bool:
-    """
-    On Windows:
-      - ensure Stockfish binary exists (download if missing)
-      - move stockfish binary from project_dir->script_dir if present
-      - move ONNX model from project_dir->script_dir if present
-      - ensure chess_detection.onnx is present in script_dir
-    On other OSes: nothing to do.
-    Returns True if everything that mattered succeeded.
-    """
     if os.name != "nt":
         return True
     
