@@ -514,7 +514,7 @@ class DownloadWorkflow:
     def _install_unix(self, bin_path, target_path):
         try:
             shutil.copy2(bin_path, target_path)
-            os.chmod(target_path, 0o755)
+            os.chmod(target_path, 0o700)
             logger.info("Installed Stockfish to %s", target_path)
             self.ui.set_label(f"Installed to {target_path.name}")
             self.ui.set_progress(100)
