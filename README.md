@@ -25,6 +25,7 @@
 
 ## 🚀 Features
 
+* **Automatic Stockfish Download**: Automatically detects your CPU and downloads the best Stockfish version—no manual setup required.
 * **FEN Extraction**: Captures your board state with a local ONNX model ([Zai-Kun’s 2D Chess Detection](https://github.com/Zai-Kun/2d-chess-pieces-detection)).
 * **Stockfish Analysis**: Integrates with the Stockfish engine to compute the optimal move.
 * **Auto-Move Execution**: Plays the suggested move on your screen automatically.
@@ -56,31 +57,14 @@ paru -S chesspilot --skipreview
 
 ### Included in Binary Releases
 
-The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **AppImage**, **EXE**, and **DEB** builds. You only need to provide **Stockfish** for your CPU architecture.
-
-### Required (Binary Users):
-
-- **Stockfish Engine**  
-  Download from [https://stockfishchess.org/download/](https://stockfishchess.org/download/)
-
-  > Place the `stockfish` zip alongside the ChessPilot executable or in the `src/` directory.
-
-  > **Windows Note**: You may also need the Microsoft Visual C++ Redistributable.
-  > [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
-
-  > **Linux Users**: You can install Stockfish using your package manager. For example:
-  ```bash
-  sudo pacman -S stockfish       # Arch / Manjaro
-  sudo apt install stockfish     # Debian / Ubuntu
-  sudo dnf install stockfish     # Fedora
-  yay -S stockfish               # AUR (Arch-based)
-  ```
+The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **AppImage**, **EXE**, and **DEB** builds.
+Stockfish will be **downloaded automatically** on first run according to your CPU.
 
 ---
 
 ## 🔧 Engine Configuration (v1.0.1)
 
-You can now fine‑tune Stockfish’s performance without touching any code.  
+You can fine-tune Stockfish’s performance without touching any code.
 Simply place an `engine_config.txt` file next to the ChessPilot executable:
 
 ```ini
@@ -92,19 +76,17 @@ setoption name Hash value 512
 
 # CPU threads to use (1–8; match your CPU core count)
 setoption name Threads value 2
-````
+```
 
 1. Edit `Hash` to adjust how much RAM (in MB) Stockfish uses.
 2. Edit `Threads` to match your CPU cores.
 3. Save and restart ChessPilot to apply the new settings.
 
-> ⚡ Get optimal multi‑core & memory tuning out‑of‑the‑box!
-
 ---
 
-## ⚙️ Prerequisites (For Source Builds)
+## ⚙️ Prerequisites (For Source Builds / Raw File Users)
 
-If you're running from source, you need:
+If you're running from source or using the **raw files** (not packaged AppImage/EXE/DEB), you need:
 
 ```bash
 sudo apt install python3-tk      # Ubuntu / Debian
@@ -121,9 +103,11 @@ pip install -r requirements.txt
 * **Assets Needed (Source only)**:
 
   1. [chess\_detectionv0.0.4.onnx](https://github.com/Zai-Kun/2d-chess-pieces-detection/releases/download/v0.0.4/chess_detectionv0.0.4.onnx)
-  2. [Stockfish Engine](https://stockfishchess.org/download/)
 
-> Place both in the root or `src/` directory.
+> Stockfish will be downloaded automatically when you run ChessPilot.
+
+> **Windows Raw File Users Only**: You may also need the Microsoft Visual C++ Redistributable if it's not already installed.
+> [Download here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
 ---
 
@@ -133,7 +117,7 @@ pip install -r requirements.txt
 git clone https://github.com/OTAKUWeBer/ChessPilot.git
 cd ChessPilot
 pip install -r requirements.txt
-# Add Stockfish and ONNX model if not using binary
+# Add ONNX model if not using binary
 ```
 
 ---
