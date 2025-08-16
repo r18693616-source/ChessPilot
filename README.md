@@ -44,11 +44,6 @@
 
 👉 [Download the latest release](https://github.com/OTAKUWeBer/ChessPilot/releases/latest)
 
-**Arch Linux Installation**
-
-ChessPilot is also available on the Arch User Repository (AUR). You can install it using your preferred AUR helper:
-
-
 ### Included in Binary Releases
 
 The ONNX model (`chess_detectionv0.0.4.onnx`) is already bundled in official **AppImage**, **EXE**, and **DEB** builds.
