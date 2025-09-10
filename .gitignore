@@ -85,3 +85,4 @@ ChessPilot-*.AppImage
 *.orig
 *.rej
 *~
+.env
