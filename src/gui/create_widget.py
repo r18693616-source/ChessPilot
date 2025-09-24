@@ -90,6 +90,53 @@ def create_widgets(app):
     )
     app.delay_spinbox.pack(anchor='w')
 
+    # Move Mode Selection
+    mode_frame = tk.Frame(color_panel, bg=app.frame_color)
+
+    # Create StringVar for move mode if it doesn't exist
+    if not hasattr(app, 'move_mode_var'):
+        app.move_mode_var = tk.StringVar(value='drag')
+    
+    # Create radiobutton frame
+    radio_frame = tk.Frame(mode_frame, bg=app.frame_color)
+    
+    style = ttk.Style()
+    style.configure(
+        "Mode.TRadiobutton",
+        background="#373737",
+        foreground="white",
+        font=("Segoe UI", 10)
+    )
+    style.map(
+        "Mode.TRadiobutton",
+        background=[('active', '#333131'), ('pressed', '#333131')],
+        foreground=[('active', 'white'), ('pressed', 'white')]
+    )
+    
+    # Create radiobuttons with proper command
+    drag_radio = ttk.Radiobutton(
+        radio_frame,
+        text="Drag Mode",
+        variable=app.move_mode_var,
+        value="drag",
+        style="Mode.TRadiobutton",
+        command=lambda: app.set_move_mode("drag")
+    )
+    drag_radio.grid(row=0, column=0, padx=10, sticky='w')
+    
+    click_radio = ttk.Radiobutton(
+        radio_frame,
+        text="Click Mode",
+        variable=app.move_mode_var,
+        value="click",
+        style="Mode.TRadiobutton",
+        command=lambda: app.set_move_mode("click")
+    )
+    click_radio.grid(row=0, column=1, padx=10, sticky='w')
+    
+    radio_frame.pack(anchor='w')
+    mode_frame.pack(fill='x', pady=5)
+    
     depth_panel.pack(fill='x', pady=10)
     color_panel.pack(padx=30, pady=10, fill='x')
     app.color_frame.pack(expand=True, fill=tk.BOTH)

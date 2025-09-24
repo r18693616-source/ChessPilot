@@ -48,7 +48,8 @@ from gui.shortcuts import handle_esc_key, bind_shortcuts
 from gui.button_and_checkboxes import (
     color_button,
     action_button,
-    castling_checkboxes
+    castling_checkboxes,
+    move_mode,
 )
 
 class ChessPilot:
@@ -56,7 +57,7 @@ class ChessPilot:
         logger.info("Initializing ChessPilot application")
         self.root = root
         self.root.title("ChessPilot")
-        self.root.geometry("350x350")
+        self.root.geometry("350x380")
         self.root.resizable(False, False)
         self.root.attributes('-topmost', True)
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -71,6 +72,7 @@ class ChessPilot:
 
         # Screenshot delay (0.0 to 1.0 seconds)
         self.screenshot_delay_var = tk.DoubleVar(value=0.4)
+        self.move_mode = "drag"  # or "click"
 
         # Board cropping parameters (unused until you set them)
         self.chessboard_x = None
@@ -132,7 +134,10 @@ class ChessPilot:
 
     def create_action_button(self, parent, text, command):
         return action_button(self, parent, text, command)
-        
+    
+    def create_move_method_radiobuttons(self, parent, text, method):
+        return move_mode(self, parent, text, method)
+    
     def create_castling_checkboxes(self):
         castling_checkboxes(self)
 
@@ -150,6 +155,12 @@ class ChessPilot:
         self.btn_play.config(state=tk.NORMAL)
         self.update_status(f"\nPlaying as {'White' if color == 'w' else 'Black'}")
 
+    def set_move_mode(self, mode):
+        """Set the move mode (drag or click)"""
+        logger.info(f"Move method set to: {mode}")
+        self.move_mode = mode
+        self.update_status(f"\nMove method: {mode.capitalize()}")
+        
     def update_status(self, message):
         logger.debug(f"Status update: {message.strip()}")
         self.status_label.config(text=message)
@@ -165,6 +176,7 @@ class ChessPilot:
                 self.color_indicator,
                 self.auto_mode_var,
                 self.btn_play,
+                self.move_mode,
                 self.board_positions,
                 self.update_status,
                 self.kingside_var,
@@ -190,6 +202,7 @@ class ChessPilot:
                     self.color_indicator,
                     self.auto_mode_var,
                     self.btn_play,
+                    self.move_mode,
                     self.board_positions,
                     self.last_fen_by_color,
                     self.screenshot_delay_var,
@@ -224,7 +237,7 @@ class ChessPilot:
 
     def drag_piece(self, move: str):
         logger.debug(f"Dragging piece for move: {move}")
-        move_piece(self.color_indicator, move, self.board_positions, self.auto_mode_var, self.root, self.btn_play)
+        move_piece(self.color_indicator, move, self.board_positions, self.auto_mode_var, self.root, self.btn_play, self.move_mode)
 
     def expand_fen_row(self, row: str):
         logger.debug(f"Expanding FEN row: {row}")
@@ -260,7 +273,8 @@ class ChessPilot:
             self.root,
             self.auto_mode_var,
             self.update_status,
-            self.btn_play
+            self.btn_play,
+            self.move_mode,
         )
 
     def query_best_move(self, fen: str):

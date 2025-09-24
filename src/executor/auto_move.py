@@ -16,6 +16,7 @@ def process_move_thread(
     color_indicator,
     auto_mode_var,
     btn_play,
+    move_mode,
     board_positions,
     update_status,
     kingside_var,
@@ -35,6 +36,7 @@ def process_move_thread(
             color_indicator,
             auto_mode_var,
             btn_play,
+            move_mode,
             board_positions,
             update_status,
             kingside_var,
@@ -52,6 +54,7 @@ def auto_move_loop(
     color_indicator,
     auto_mode_var,
     btn_play,
+    move_mode,
     board_positions,
     last_fen_by_color,
     screenshot_delay_var,
@@ -73,7 +76,7 @@ def auto_move_loop(
     
     # Main processing loop
     _run_move_detection_loop(
-        root, color_indicator, opp_color, auto_mode_var, btn_play,
+        root, color_indicator, opp_color, auto_mode_var, btn_play, move_mode,
         board_positions, last_fen_by_color, screenshot_delay_var,
         update_status_callback, kingside_var, queenside_var, update_last_fen_for_color
     )
@@ -134,7 +137,7 @@ def _update_seed_positions(placement, last_fen_by_color):
 
 
 def _run_move_detection_loop(
-    root, color_indicator, opp_color, auto_mode_var, btn_play,
+    root, color_indicator, opp_color, auto_mode_var, btn_play, move_mode,
     board_positions, last_fen_by_color, screenshot_delay_var,
     update_status_callback, kingside_var, queenside_var, update_last_fen_for_color
 ):
@@ -165,7 +168,7 @@ def _run_move_detection_loop(
                 
                 if move_detected:
                     _process_detected_move(
-                        root, color_indicator, auto_mode_var, btn_play, board_positions,
+                        root, color_indicator, auto_mode_var, btn_play, move_mode, board_positions,
                         screenshot_delay_var, update_status_callback, kingside_var,
                         queenside_var, update_last_fen_for_color, last_fen_by_color
                     )
@@ -267,7 +270,7 @@ def _handle_player_turn(opp_color, placement, last_fen_by_color):
 
 
 def _process_detected_move(
-    root, color_indicator, auto_mode_var, btn_play, board_positions,
+    root, color_indicator, auto_mode_var, btn_play, move_mode, board_positions,
     screenshot_delay_var, update_status_callback, kingside_var,
     queenside_var, update_last_fen_for_color, last_fen_by_color
 ):
@@ -279,7 +282,7 @@ def _process_detected_move(
     time.sleep(delay)
     
     process_move_thread(
-        root, color_indicator, auto_mode_var, btn_play, board_positions,
+        root, color_indicator, auto_mode_var, btn_play, move_mode, board_positions,
         update_status_callback, kingside_var, queenside_var,
         update_last_fen_for_color, last_fen_by_color, screenshot_delay_var
     )

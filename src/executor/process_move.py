@@ -24,6 +24,7 @@ def process_move(
     color_indicator,
     auto_mode_var,
     btn_play,
+    move_mode,
     board_positions,
     update_status,
     kingside_var,
@@ -51,7 +52,7 @@ def process_move(
         
         # Get and execute the best move
         _process_best_move(
-            board_data, root, color_indicator, auto_mode_var, btn_play,
+            board_data, root, color_indicator, auto_mode_var, btn_play, move_mode,
             board_positions, update_status, kingside_var, queenside_var,
             update_last_fen_for_color, last_fen_by_color
         )
@@ -150,7 +151,7 @@ def _extract_fen_from_boxes(boxes, color_indicator, root, update_status, auto_mo
 
 
 def _process_best_move(
-    board_data, root, color_indicator, auto_mode_var, btn_play,
+    board_data, root, color_indicator, auto_mode_var, btn_play, move_mode,
     board_positions, update_status, kingside_var, queenside_var,
     update_last_fen_for_color, last_fen_by_color
 ):
@@ -173,7 +174,7 @@ def _process_best_move(
     # Execute the move (castling or normal)
     _execute_move(
         best_move, fen, updated_fen, mate_flag, color_indicator,
-        board_positions, auto_mode_var, root, btn_play, update_status,
+        board_positions, auto_mode_var, root, btn_play, move_mode,  update_status,
         kingside_var, queenside_var, last_fen_by_color
     )
 
@@ -217,7 +218,7 @@ def _calculate_best_move(root, fen, auto_mode_var, update_status):
 
 def _execute_move(
     best_move, fen, updated_fen, mate_flag, color_indicator,
-    board_positions, auto_mode_var, root, btn_play, update_status,
+    board_positions, auto_mode_var, root, btn_play, move_mode, update_status,
     kingside_var, queenside_var, last_fen_by_color
 ):
     """
@@ -228,14 +229,14 @@ def _execute_move(
     if _should_execute_castling(is_castle_move, kingside_var, queenside_var):
         _execute_castling_move(
             best_move, side, fen, updated_fen, mate_flag, color_indicator,
-            board_positions, auto_mode_var, root, btn_play, update_status,
+            board_positions, auto_mode_var, root, btn_play, move_mode, update_status,
             kingside_var, queenside_var, last_fen_by_color
         )
     else:
         logger.info("Executing normal (non-castling) move.")
         success = execute_normal_move(
             board_positions, color_indicator, best_move, mate_flag,
-            updated_fen, root, auto_mode_var, update_status, btn_play
+            updated_fen, root, auto_mode_var, update_status, btn_play, move_mode,
         )
         if not success:
             logger.error("Normal move execution failed.")
@@ -250,7 +251,7 @@ def _should_execute_castling(is_castle_move, kingside_var, queenside_var):
 
 def _execute_castling_move(
     best_move, side, fen, updated_fen, mate_flag, color_indicator,
-    board_positions, auto_mode_var, root, btn_play, update_status,
+    board_positions, auto_mode_var, root, btn_play, move_mode, update_status,
     kingside_var, queenside_var, last_fen_by_color
 ):
     """
@@ -265,7 +266,7 @@ def _execute_castling_move(
     if is_castling_possible(fen, color_indicator, side):
         _perform_castling_move(
             best_move, updated_fen, mate_flag, color_indicator,
-            board_positions, auto_mode_var, root, btn_play, update_status, last_fen_by_color
+            board_positions, auto_mode_var, root, btn_play, update_status, last_fen_by_color, move_mode,
         )
     else:
         logger.warning("Castling not possible according to board state.")
@@ -287,12 +288,12 @@ def _auto_enable_castling_checkbox(side, kingside_var, queenside_var, root, upda
 
 def _perform_castling_move(
     best_move, updated_fen, mate_flag, color_indicator,
-    board_positions, auto_mode_var, root, btn_play, update_status, last_fen_by_color
+    board_positions, auto_mode_var, root, btn_play,move_mode, update_status, last_fen_by_color
 ):
     """
     Perform the actual castling move and verify it.
     """
-    move_piece(color_indicator, best_move, board_positions, auto_mode_var, root, btn_play)
+    move_piece(color_indicator, best_move, board_positions, auto_mode_var, root, btn_play, move_mode)
     
     status_msg = f"\nBest Move: {best_move}\nCastling move executed: {best_move}"
     if mate_flag:

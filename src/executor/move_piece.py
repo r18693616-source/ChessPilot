@@ -3,8 +3,9 @@ from executor.chess_notation_to_index import chess_notation_to_index
 from executor.move_cursor_to_button import move_cursor_to_button
 from tkinter import messagebox
 
-def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play,
-               humanize=True, offset_range=(-16, 16), mode="drag"):
+def move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play, mode,
+               humanize=True, offset_range=(-16, 16)):
+    print(f"Moving piece: {move} in mode: {mode}")
     start_idx, end_idx = chess_notation_to_index(color_indicator, root, auto_mode_var, move)
     if not start_idx or not end_idx:
         return

@@ -82,16 +82,15 @@ def click_piece(start_pos, end_pos, humanize=True, offset_range=(-16, 16), root=
                 win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
                 time.sleep(0.02)
                 win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-                time.sleep(0.05)
         elif is_wayland():
             client = WaylandInput()
             for x, y in [(start_x, start_y), (end_x, end_y)]:
-                client.click(int(round(x)), int(round(y)))
-                time.sleep(0.05)
+                client.click(int(round(x)), int(round(y)), button="left")
+                time.sleep(0.02)
         else:
             for x, y in [(start_x, start_y), (end_x, end_y)]:
                 pyautogui.click(x, y)
-                time.sleep(0.05)
+                time.sleep(0.02)
         logger.info("Click move simulated successfully")
     except Exception as e:
         logger.error(f"Failed to click piece: {e}")

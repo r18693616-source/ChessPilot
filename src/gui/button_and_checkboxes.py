@@ -65,3 +65,22 @@ def castling_checkboxes(app):
         variable=app.queenside_var,
         style="Castling.TCheckbutton"
     ).grid(row=1, column=0, padx=10, sticky='w')
+    
+
+def move_mode(app, parent, text, method):
+    btn = tk.Button(
+        parent,
+        text=text,
+        font=('Segoe UI', 10, 'bold'),
+        width=9,
+        bd=0,
+        padx=15,
+        pady=8,
+        bg=app.accent_color,
+        fg=app.text_color,
+        activebackground=app.hover_color,
+        activeforeground=app.text_color,
+        command=lambda: app.set_move_mode(method)
+    )
+    btn.pack(side=tk.LEFT, padx=5)
+    return btn

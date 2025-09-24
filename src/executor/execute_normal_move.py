@@ -20,7 +20,8 @@ def execute_normal_move(
     root,
     auto_mode_var,
     update_status,
-    btn_play
+    btn_play,
+    move_mode,
 ):
     """
     Try up to 3 times to drag your piece; only succeed if
@@ -59,7 +60,7 @@ def execute_normal_move(
             continue
 
         logger.debug(f"Dragging from {start_idx} to {end_idx}")
-        move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play)
+        move_piece(color_indicator, move, board_positions, auto_mode_var, root, btn_play, move_mode)
         time.sleep(0.1)
 
         img = capture_screenshot_in_memory()
