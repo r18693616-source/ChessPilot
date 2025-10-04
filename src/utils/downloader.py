@@ -7,14 +7,13 @@ import shutil
 import tempfile
 import threading
 import requests
-import tkinter as tk
-from tkinter import ttk
+from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QProgressBar
+from PyQt6.QtCore import Qt, QTimer
 from pathlib import Path
 import logging
 import sys
 import time
 
-# ------------------------ Logger ------------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 _ch = logging.StreamHandler(sys.stdout)
@@ -634,56 +633,70 @@ class DownloadWorkflow:
             self.ui.close_after(1400)
 
 # ------------------------ Downloader UI ------------------------
-class StockfishDownloaderApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Stockfish Downloader")
-        self.root.geometry("360x140")
-        self.root.resizable(False, False)
-        self.root.attributes("-topmost", True)
+class StockfishDownloaderApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Stockfish Downloader")
+        self.setFixedSize(360, 140)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
 
         self._setup_styles()
         self._create_widgets()
-        
-        # Start the operation in a daemon thread
+
         threading.Thread(target=self._start_download_flow, daemon=True).start()
 
     def _setup_styles(self):
-        self.style = ttk.Style()
-        try:
-            self.style.theme_use("clam")
-        except tk.TclError:
-            logger.warning("Could not set clam theme")
-            
-        self.style.configure("TLabel", background=BG_COLOR, foreground=TEXT_COLOR)
-        self.style.configure("TButton", background=FRAME_COLOR, foreground=TEXT_COLOR)
-        self.style.configure("TProgressbar", troughcolor=FRAME_COLOR)
-        self.root.configure(bg=BG_COLOR)
-    
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {BG_COLOR};
+            }}
+            QLabel {{
+                color: {TEXT_COLOR};
+                background-color: {BG_COLOR};
+            }}
+            QProgressBar {{
+                border: 1px solid {FRAME_COLOR};
+                background-color: {FRAME_COLOR};
+                text-align: center;
+                color: {TEXT_COLOR};
+            }}
+            QProgressBar::chunk {{
+                background-color: {ACCENT_COLOR};
+            }}
+        """)
+
     def _create_widgets(self):
-        self.label = ttk.Label(self.root, text="Preparing...", anchor="w")
-        self.label.pack(fill="x", padx=12, pady=(12, 6))
+        layout = QVBoxLayout()
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(6)
 
-        self.progress = tk.DoubleVar(value=0.0)
-        self.pb = ttk.Progressbar(self.root, orient="horizontal", mode="determinate", 
-                                 variable=self.progress, length=320)
-        self.pb.pack(padx=12, pady=(0, 6))
+        self.label = QLabel("Preparing...")
+        layout.addWidget(self.label)
 
-        self.sub_label = ttk.Label(self.root, text="", anchor="w")
-        self.sub_label.pack(fill="x", padx=12)
+        self.pb = QProgressBar()
+        self.pb.setMinimum(0)
+        self.pb.setMaximum(100)
+        self.pb.setValue(0)
+        self.pb.setFixedWidth(320)
+        layout.addWidget(self.pb)
+
+        self.sub_label = QLabel("")
+        layout.addWidget(self.sub_label)
+
+        self.setLayout(layout)
 
     def set_label(self, text):
-        self.root.after(0, lambda: self.label.config(text=text))
-        
+        QTimer.singleShot(0, lambda: self.label.setText(text))
+
     def set_sub_label(self, text):
-        self.root.after(0, lambda: self.sub_label.config(text=text))
-        
+        QTimer.singleShot(0, lambda: self.sub_label.setText(text))
+
     def set_progress(self, pct):
-        self.root.after(0, lambda: self.progress.set(pct))
+        QTimer.singleShot(0, lambda: self.pb.setValue(int(pct)))
 
     def close_after(self, ms=900):
         logger.debug("Window will close in %d ms", ms)
-        self.root.after(ms, self.root.destroy)
+        QTimer.singleShot(ms, self.close)
 
     def _start_download_flow(self):
         workflow = DownloadWorkflow(self)
@@ -694,9 +707,10 @@ def download_stockfish(target: Path | None = None):
     Main entry point to run the Stockfish downloader app.
     Accepts optional `target` Path (e.g. Path('/usr/bin/stockfish')).
     """
-    root = tk.Tk()
-    app = StockfishDownloaderApp(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    window = StockfishDownloaderApp()
+    window.show()
+    app.exec()
     return str(target) if target else None
 
 # ------------------------ Main ------------------------
