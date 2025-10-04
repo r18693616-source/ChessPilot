@@ -174,7 +174,7 @@ def _process_best_move(
     # Execute the move (castling or normal)
     _execute_move(
         best_move, fen, updated_fen, mate_flag, color_indicator,
-        board_positions, auto_mode_var, root, btn_play, move_mode,  update_status,
+        board_positions, auto_mode_var, root, btn_play, move_mode, update_status,
         kingside_var, queenside_var, last_fen_by_color
     )
 
