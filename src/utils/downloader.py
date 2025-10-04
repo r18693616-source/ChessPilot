@@ -39,46 +39,120 @@ def detect_os():
         return "mac"
     return p
 
-def detect_arch_flags():
+def detect_cpu_info():
+    """Detect CPU vendor and features"""
     arch = platform.machine().lower()
-    flags = set()
     os_name = detect_os()
     
+    vendor = "unknown"
+    flags = set()
+    
     if os_name == "linux":
-        flags = _detect_linux_cpu_flags()
+        vendor, flags = _detect_linux_cpu_info()
     elif os_name == "mac":
-        flags = _detect_mac_cpu_flags()
+        vendor, flags = _detect_mac_cpu_info()
     elif os_name == "windows":
-        flags.update(["sse4_1"])
-        
-    return arch, flags
+        vendor, flags = _detect_windows_cpu_info()
+    
+    logger.info(f"CPU Vendor: {vendor}, Flags: {sorted(flags)[:10]}...")
+    return arch, vendor, flags
 
-def _detect_linux_cpu_flags():
+def _detect_linux_cpu_info():
+    vendor = "unknown"
     flags = set()
+    
     try:
-        out = subprocess.check_output(["/usr/bin/lscpu"], text=True, timeout=10)
-        for line in out.splitlines():
-            if "Flags" in line or "flags" in line:
-                flags.update(line.split(":")[1].strip().split())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
-        logger.warning(f"Could not detect CPU flags on Linux: {e}")
+        # Get CPU info
+        with open("/proc/cpuinfo", "r") as f:
+            for line in f:
+                line_lower = line.lower()
+                if "vendor_id" in line_lower:
+                    if "amd" in line_lower:
+                        vendor = "amd"
+                    elif "intel" in line_lower:
+                        vendor = "intel"
+                elif "flags" in line_lower:
+                    parts = line.split(":", 1)
+                    if len(parts) > 1:
+                        flags.update(parts[1].strip().split())
     except Exception as e:
-        logger.error(f"Unexpected error detecting CPU flags: {e}")
-    return flags
+        logger.warning(f"Could not read /proc/cpuinfo: {e}")
+        # Fallback to lscpu
+        try:
+            out = subprocess.check_output(["/usr/bin/lscpu"], text=True, timeout=10)
+            for line in out.splitlines():
+                if "vendor id" in line.lower():
+                    if "amd" in line.lower():
+                        vendor = "amd"
+                    elif "intel" in line.lower():
+                        vendor = "intel"
+                elif "flags" in line.lower():
+                    flags.update(line.split(":")[1].strip().split())
+        except Exception as e2:
+            logger.warning(f"Could not detect CPU with lscpu: {e2}")
+    
+    return vendor, flags
 
-def _detect_mac_cpu_flags():
+def _detect_mac_cpu_info():
+    vendor = "apple"  # Modern Macs are Apple Silicon or Intel
     flags = set()
+    
     try:
+        # Check for Apple Silicon
+        out = subprocess.check_output(["/usr/sbin/sysctl", "-n", "machdep.cpu.brand_string"], 
+                                     text=True, timeout=5).strip()
+        if "apple" in out.lower():
+            vendor = "apple"
+        elif "intel" in out.lower():
+            vendor = "intel"
+        elif "amd" in out.lower():
+            vendor = "amd"
+            
+        # Get CPU features
         out = subprocess.check_output(["/usr/sbin/sysctl", "-a"], text=True, timeout=10)
         for line in out.splitlines():
             key = line.split(":")[0].strip().lower()
             if "machdep.cpu.features" in key or "machdep.cpu.leaf7_features" in key:
                 flags.update(line.split(":")[1].strip().split())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as e:
-        logger.warning(f"Could not detect CPU flags on macOS: {e}")
     except Exception as e:
-        logger.error(f"Unexpected error detecting CPU flags: {e}")
-    return flags
+        logger.warning(f"Could not detect CPU on macOS: {e}")
+    
+    return vendor, flags
+
+def _detect_windows_cpu_info():
+    vendor = "unknown"
+    flags = set()
+    
+    try:
+        # Use WMIC to get CPU info
+        out = subprocess.check_output(["wmic", "cpu", "get", "name"], 
+                                     text=True, timeout=10).strip()
+        out_lower = out.lower()
+        
+        if "amd" in out_lower or "ryzen" in out_lower:
+            vendor = "amd"
+        elif "intel" in out_lower:
+            vendor = "intel"
+        
+        # Windows doesn't easily expose CPU flags, so we assume modern features
+        flags.update(["sse4_1", "sse4_2", "popcnt"])
+        
+        # Try to detect AVX support via platform module
+        if hasattr(platform, '_syscmd_ver'):
+            flags.add("avx")
+            flags.add("avx2")  # Most modern CPUs
+            
+    except Exception as e:
+        logger.warning(f"Could not detect CPU on Windows: {e}")
+        # Fallback: assume basic modern CPU
+        flags.update(["sse4_1", "sse4_2"])
+    
+    return vendor, flags
+
+def detect_arch_flags():
+    """Legacy function for compatibility"""
+    arch, vendor, flags = detect_cpu_info()
+    return arch, flags
 
 def format_bytes(n):
     n = float(n or 0)
@@ -89,12 +163,14 @@ def format_bytes(n):
     return f"{n:.1f} TB"
 
 # ------------------------ Asset selection ------------------------
-def choose_best_asset(assets, os_name, arch, flags):
+def choose_best_asset(assets, os_name, arch, vendor, flags):
+    """Choose the best Stockfish binary based on OS, CPU vendor, and features"""
     filtered = _filter_assets_by_os(assets, os_name)
     if not filtered:
+        logger.error("No assets found for this OS")
         return None
     
-    return _select_best_by_cpu_features(filtered, flags)
+    return _select_best_by_cpu_features(filtered, vendor, flags)
 
 def _filter_assets_by_os(assets, os_name):
     filtered = []
@@ -132,30 +208,92 @@ def _matches_os_generic(name, os_name):
         return True
     return False
 
-def _select_best_by_cpu_features(filtered, flags):
+def _select_best_by_cpu_features(filtered, vendor, flags):
+    """Select the best binary based on CPU features
+    
+    Stockfish naming conventions:
+    - x86-64-avx512 (newest, requires AVX-512)
+    - x86-64-bmi2 (modern Intel/AMD with BMI2)
+    - x86-64-avx2 (requires AVX2)
+    - x86-64-sse41-popcnt (older CPUs)
+    - x86-64-modern (generic modern)
+    - x86-64 (basic fallback)
+    """
     score_map = {}
+    
     for a in filtered:
-        score = _calculate_cpu_score(a["name"].lower(), flags)
+        score = _calculate_cpu_score(a["name"].lower(), vendor, flags)
         score_map[a["name"]] = score
-
-    best = max(score_map.items(), key=lambda kv: kv[1])[0]
+        logger.debug(f"Asset: {a['name']} -> Score: {score}")
+    
+    if not score_map:
+        return filtered[0] if filtered else None
+    
+    best_name = max(score_map.items(), key=lambda kv: kv[1])[0]
+    logger.info(f"Best match: {best_name} (score: {score_map[best_name]})")
+    
     for a in filtered:
-        if a["name"] == best:
+        if a["name"] == best_name:
             return a
+    
     return filtered[0]
 
-def _calculate_cpu_score(name, flags):
+def _calculate_cpu_score(name, vendor, flags):
+    """Calculate a score for how well this binary matches the CPU"""
     score = 0
-    if "avx512" in name and any(f.startswith("avx512") for f in flags):
-        score += 20
-    elif "avx2" in name and "avx2" in flags:
-        score += 12
-    elif "bmi2" in name and "bmi2" in flags:
-        score += 8
-    elif "sse41" in name and ("sse4_1" in flags or "sse4_2" in flags):
-        score += 6
+    
+    # Check for CPU feature flags in the binary name
+    # Higher scores for more advanced instruction sets
+    
+    if "avx512" in name:
+        # AVX-512 is the most advanced
+        if any(f.startswith("avx512") for f in flags):
+            score += 100
+        else:
+            score -= 50  # Penalize if we don't have it
+    
+    elif "bmi2" in name:
+        # BMI2 is common on modern Intel (Haswell+) and AMD (Zen+)
+        if "bmi2" in flags:
+            score += 80
+            # Bonus for matching vendor
+            if vendor == "amd" and "amd" in name:
+                score += 10
+            elif vendor == "intel" and "intel" in name:
+                score += 10
+        else:
+            score -= 30
+    
+    elif "avx2" in name:
+        # AVX2 is widely supported
+        if "avx2" in flags or "avx" in flags:
+            score += 60
+        else:
+            score -= 20
+    
+    elif "popcnt" in name or "sse41" in name or "sse4" in name:
+        # SSE4.1 + POPCNT is baseline modern
+        if any(x in flags for x in ["sse4_1", "sse4_2", "popcnt", "sse4.1", "sse4.2"]):
+            score += 40
+    
+    elif "modern" in name:
+        # Generic modern build
+        score += 30
+    
+    elif "x86-64" in name or "x86_64" in name:
+        # Basic x86-64 fallback
+        score += 10
+    
+    # Prefer compressed archives
     if name.endswith((".tar.gz", ".tgz", ".zip", ".tar")):
-        score += 2
+        score += 5
+    
+    # Small penalty for non-matching vendor specifics
+    if "amd" in name and vendor != "amd":
+        score -= 5
+    if "intel" in name and vendor != "intel":
+        score -= 5
+    
     return score
 
 # ------------------------ Download & extraction ------------------------
@@ -296,45 +434,16 @@ def extract_binary(archive_path):
     extractor = BinaryExtractor(archive_path)
     return extractor.extract_binary()
 
-# ------------------------ Install helpers ------------------------
-def install_with_sudo(bin_path, password):
-    target = "/usr/bin/stockfish"
-    try:
-        cmd = ["/usr/bin/sudo", "-S", "install", "-m", "755", bin_path, target]
-        proc = subprocess.run(cmd, input=(password + "\n"), text=True, 
-                            capture_output=True, check=True, timeout=30)
-        logger.debug("sudo install output: %s", proc.stdout)
-        return True, target
-    except subprocess.CalledProcessError as e:
-        stderr = e.stderr or e.stdout or str(e)
-        logger.error(f"sudo install failed: {stderr}")
-        return False, stderr
-    except subprocess.TimeoutExpired:
-        logger.error("sudo install timed out")
-        return False, "Installation timed out"
-
-def install_as_root(bin_path):
-    target = Path("/usr/bin/stockfish")
-    try:
-        shutil.copy2(bin_path, str(target))
-        target.chmod(0o755)
-        return True, str(target)
-    except (OSError, IOError) as e:
-        logger.error(f"Root install failed: {e}")
-        return False, str(e)
-
-# NOTE: Above helpers are kept for compatibility but will not be used in the simplified flow.
-
 # ------------------------ Download workflow ------------------------
 class DownloadWorkflow:
     def __init__(self, ui_callbacks):
         self.ui = ui_callbacks
         self.os_name = detect_os()
-        self.arch, self.flags = detect_arch_flags()
+        self.arch, self.vendor, self.flags = detect_cpu_info()
         
     def execute(self):
         try:
-            logger.info(f"Detected OS={self.os_name}, arch={self.arch}")
+            logger.info(f"Detected OS={self.os_name}, arch={self.arch}, vendor={self.vendor}")
             
             if self._is_already_installed():
                 return
@@ -375,7 +484,6 @@ class DownloadWorkflow:
         return False
     
     def _get_target_path(self):
-        # Minimal behavior: install next to executable (if frozen) or to current working directory
         if self.os_name == "windows":
             if getattr(sys, 'frozen', False):
                 return Path(sys.executable).parent / "stockfish.exe"
@@ -410,7 +518,8 @@ class DownloadWorkflow:
             return None
     
     def _select_asset(self, release_data):
-        best_asset = choose_best_asset(release_data["assets"], self.os_name, self.arch, self.flags)
+        best_asset = choose_best_asset(release_data["assets"], self.os_name, 
+                                       self.arch, self.vendor, self.flags)
         if not best_asset:
             logger.error("No matching build found for this OS/arch")
             self.ui.set_label("No matching build found")
@@ -419,6 +528,7 @@ class DownloadWorkflow:
             return None
             
         logger.info(f"Selected asset: {best_asset['name']} (release {release_data['tag_name']})")
+        self.ui.set_sub_label(f"CPU: {self.vendor.upper()} | Selected: {best_asset['name']}")
         return best_asset
     
     def _download_asset(self, best_asset, tag_name):
@@ -494,7 +604,6 @@ class DownloadWorkflow:
         if self.os_name == "windows":
             self._install_windows(bin_path, target_path)
         else:
-            # simplified: install into current working directory / executable dir like Windows
             self._install_unix(bin_path, target_path)
     
     def _install_windows(self, bin_path, target_path):
@@ -585,7 +694,6 @@ def download_stockfish(target: Path | None = None):
     Main entry point to run the Stockfish downloader app.
     Accepts optional `target` Path (e.g. Path('/usr/bin/stockfish')).
     """
-    # GUI installer now installs into working directory / executable dir (no sudo)
     root = tk.Tk()
     app = StockfishDownloaderApp(root)
     root.mainloop()
